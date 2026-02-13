@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   CreditCard,
   Wallet,
-  TrendingUp,
   Target,
 } from "lucide-react";
 import {
@@ -31,16 +30,17 @@ const navItems = [
     icon: CreditCard,
   },
   {
-    title: "Budget",
-    url: "/dashboard/budget",
+    title: "Finances",
+    url: "/dashboard/finances",
     icon: Wallet,
-    disabled: true,
-  },
-  {
-    title: "Income",
-    url: "/dashboard/income",
-    icon: TrendingUp,
-    disabled: true,
+    items: [
+      { title: "Overview", url: "/dashboard/finances" },
+      { title: "Accounts", url: "/dashboard/finances/accounts" },
+      { title: "Expenses", url: "/dashboard/finances/expenses" },
+      { title: "Income", url: "/dashboard/finances/incomes" },
+      { title: "Transfers", url: "/dashboard/finances/transfers" },
+      { title: "Budget", url: "/dashboard/finances/budget" },
+    ],
   },
   {
     title: "Goals",

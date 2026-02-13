@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { simulateExtraPayment, type SimulationResult } from "../lib/amortization";
+import { simulateExtraPayment, type SimulationResult } from "../utils/amortization";
 import type { Debt } from "../types";
 
 export function useDebtSimulation(debts: Debt[]) {

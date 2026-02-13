@@ -25,8 +25,9 @@ import type { Debt } from "../types";
 type DebtTableProps = {
   debts: Debt[];
   isLoading?: boolean;
-  onEdit: (debt: Debt) => void;
+  onEdit?: (debt: Debt) => void;
   onDelete: (debt: Debt) => void;
+  onView?: (debt: Debt) => void;
   onToggleVisibility?: (debtId: string) => void;
   isHidden?: (debtId: string) => boolean;
   hiddenCount?: number;
@@ -38,6 +39,7 @@ export function DebtTable({
   isLoading,
   onEdit,
   onDelete,
+  onView,
   onToggleVisibility,
   isHidden,
   hiddenCount = 0,
@@ -45,7 +47,7 @@ export function DebtTable({
 }: DebtTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const columns = getColumns({ onEdit, onDelete, onToggleVisibility, isHidden });
+  const columns = getColumns({ onEdit, onDelete, onView, onToggleVisibility, isHidden });
 
   const table = useReactTable({
     data: debts,

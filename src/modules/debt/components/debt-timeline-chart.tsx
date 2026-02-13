@@ -32,7 +32,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { format, addMonths } from "date-fns";
-import { generateTimeline, type SimulationResult } from "../lib/amortization";
+import { generateTimeline, type SimulationResult } from "../utils/amortization";
+import { formatCurrency } from "@/lib/utils";
 import type { Debt } from "../types";
 
 const FALLBACK_COLORS = [
@@ -66,7 +67,10 @@ export function DebtTimelineChart({
 }: DebtTimelineChartProps) {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
 
-  const timelineData = useMemo(() => generateTimeline(debts), [debts]);
+  const { rows: timelineData, paymentMarkers } = useMemo(
+    () => generateTimeline(debts),
+    [debts],
+  );
 
   const todayLabel = format(new Date(), "MMM yyyy");
 
@@ -137,6 +141,16 @@ export function DebtTimelineChart({
       return rowDate >= startFilter && rowDate <= endFilter;
     });
   }, [mergedData, timePeriod]);
+
+  // Deduplicate payment markers by monthLabel (multiple payments in same month)
+  const uniquePaymentMonths = useMemo(() => {
+    const seen = new Set<string>();
+    return paymentMarkers.filter((m) => {
+      if (seen.has(m.monthLabel)) return false;
+      seen.add(m.monthLabel);
+      return true;
+    });
+  }, [paymentMarkers]);
 
   if (debts.length === 0 || timelineData.length === 0) {
     return (
@@ -211,6 +225,22 @@ export function DebtTimelineChart({
               strokeDasharray="3 3"
               label={{ value: "Today", position: "insideTopRight", fontSize: 11 }}
             />
+            {/* Capital payment markers */}
+            {uniquePaymentMonths.map((marker) => (
+              <ReferenceLine
+                key={`payment-${marker.monthLabel}`}
+                x={marker.monthLabel}
+                stroke="hsl(var(--primary))"
+                strokeDasharray="2 4"
+                strokeOpacity={0.5}
+                label={{
+                  value: `${formatCurrency(marker.amount)}`,
+                  position: "insideTopLeft",
+                  fontSize: 10,
+                  fill: "hsl(var(--primary))",
+                }}
+              />
+            ))}
             {debts.map((debt, i) => {
               const color =
                 debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];

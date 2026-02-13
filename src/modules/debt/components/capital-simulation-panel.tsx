@@ -20,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Debt } from "../types";
-import type { SimulationResult } from "../lib/amortization";
+import type { SimulationResult } from "../utils/amortization";
 
 type CapitalSimulationPanelProps = {
   debts: Debt[];

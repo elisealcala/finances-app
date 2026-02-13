@@ -52,3 +52,27 @@ export function useDeleteDebt() {
     },
   });
 }
+
+export function useAddPayment() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...trpc.debt.addPayment.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trpc.debt.list.queryKey() });
+    },
+  });
+}
+
+export function useDeletePayment() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...trpc.debt.deletePayment.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trpc.debt.list.queryKey() });
+    },
+  });
+}

@@ -1,55 +1,23 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreditCard, Wallet, TrendingUp, Target } from "lucide-react";
+import { getQueryClient, trpc, HydrateClient } from "@/server/trpc/server";
+import { DashboardOverview } from "./dashboard-overview";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const queryClient = getQueryClient();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  void queryClient.prefetchQuery(trpc.debt.list.queryOptions());
+  void queryClient.prefetchQuery(
+    trpc.finances.overview.periodSummary.queryOptions({ year, month }),
+  );
+  void queryClient.prefetchQuery(trpc.finances.account.list.queryOptions());
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome to your personal finance tracker.
-        </p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Debt</CardTitle>
-            <CreditCard className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-xs">
-              Track and manage your debts
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="opacity-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budget</CardTitle>
-            <Wallet className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-xs">Coming soon</p>
-          </CardContent>
-        </Card>
-        <Card className="opacity-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Income</CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-xs">Coming soon</p>
-          </CardContent>
-        </Card>
-        <Card className="opacity-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Goals</CardTitle>
-            <Target className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-xs">Coming soon</p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <HydrateClient>
+      <DashboardOverview />
+    </HydrateClient>
   );
 }

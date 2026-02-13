@@ -9,18 +9,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Eye, EyeOff, CalendarRange, ExternalLink } from "lucide-react";
 import { formatCurrency, formatPercentage, DEBT_TYPE_LABELS } from "@/lib/utils";
+import { totalMonthlyFees } from "../utils/amortization";
 import type { Debt } from "../types";
 
 type ColumnsConfig = {
-  onEdit: (debt: Debt) => void;
+  onEdit?: (debt: Debt) => void;
   onDelete: (debt: Debt) => void;
+  onView?: (debt: Debt) => void;
   onToggleVisibility?: (debtId: string) => void;
   isHidden?: (debtId: string) => boolean;
 };
 
-export function getColumns({ onEdit, onDelete, onToggleVisibility, isHidden }: ColumnsConfig): ColumnDef<Debt>[] {
+export function getColumns({ onEdit, onDelete, onView, onToggleVisibility, isHidden }: ColumnsConfig): ColumnDef<Debt>[] {
   return [
     ...(onToggleVisibility
       ? [
@@ -52,10 +54,20 @@ export function getColumns({ onEdit, onDelete, onToggleVisibility, isHidden }: C
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => {
-        const hidden = isHidden?.(row.original.id) ?? false;
+        const debt = row.original;
+        const hidden = isHidden?.(debt.id) ?? false;
         return (
-          <div className={`font-medium ${hidden ? "opacity-50" : ""}`}>
+          <div className={`font-medium flex items-center gap-1.5 ${hidden ? "opacity-50" : ""}`}>
+            {debt.color && (
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: debt.color }}
+              />
+            )}
             {row.getValue("name")}
+            {debt.hasSchedule && (
+              <CalendarRange className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+            )}
           </div>
         );
       },
@@ -82,9 +94,20 @@ export function getColumns({ onEdit, onDelete, onToggleVisibility, isHidden }: C
     },
     {
       accessorKey: "minimumPayment",
-      header: "Min Payment",
-      cell: ({ row }) =>
-        formatCurrency(Number(row.getValue("minimumPayment"))),
+      header: "Monthly",
+      cell: ({ row }) => {
+        const debt = row.original;
+        const feeTotal = totalMonthlyFees(debt.fees);
+        return (
+          <div>
+            <span>{formatCurrency(Number(row.getValue("minimumPayment")))}</span>
+            <span className="text-muted-foreground block text-xs">
+              {formatCurrency(debt.monthlyCapital)} + {formatCurrency(debt.monthlyInterest)}
+              {feeTotal > 0 && ` + ${formatCurrency(feeTotal)}`}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
@@ -111,10 +134,18 @@ export function getColumns({ onEdit, onDelete, onToggleVisibility, isHidden }: C
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(debt)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              {onView && (
+                <DropdownMenuItem onClick={() => onView(debt)}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  View
+                </DropdownMenuItem>
+              )}
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(debt)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => onDelete(debt)}
                 className="text-destructive"

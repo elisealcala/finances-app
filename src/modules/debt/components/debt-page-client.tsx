@@ -10,24 +10,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { useDebts, useDeleteDebt } from "../hooks/use-debts";
 import { useDebtVisibility } from "../hooks/use-debt-visibility";
 import { useDebtSimulation } from "../hooks/use-debt-simulation";
 import { DebtSummaryCards } from "./debt-summary-cards";
 import { DebtTable } from "./debt-table";
-import { DebtForm } from "./debt-form";
 import { DebtTimelineChart } from "./debt-timeline-chart";
 import { CapitalSimulationPanel } from "./capital-simulation-panel";
 import type { Debt } from "../types";
 import type { DebtSummary } from "../types";
 
 export function DebtPageClient() {
+  const router = useRouter();
   const { data, isLoading } = useDebts();
   const deleteDebt = useDeleteDebt();
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
   const allDebts = data?.debts ?? [];
@@ -61,16 +60,6 @@ export function DebtPageClient() {
     };
   }, [data, visibleDebts]);
 
-  function handleEdit(debt: Debt) {
-    setEditingDebt(debt);
-    setFormOpen(true);
-  }
-
-  function handleFormClose(open: boolean) {
-    setFormOpen(open);
-    if (!open) setEditingDebt(null);
-  }
-
   async function handleDelete() {
     if (!deletingDebt) return;
     await deleteDebt.mutateAsync({ id: deletingDebt.id });
@@ -88,7 +77,7 @@ export function DebtPageClient() {
             Manage and track all your debts in one place.
           </p>
         </div>
-        <Button onClick={() => setFormOpen(true)}>
+        <Button onClick={() => router.push("/dashboard/debt/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Debt
         </Button>
@@ -107,8 +96,8 @@ export function DebtPageClient() {
           <DebtTable
             debts={allDebts}
             isLoading={isLoading}
-            onEdit={handleEdit}
             onDelete={setDeletingDebt}
+            onView={(debt) => router.push(`/dashboard/debt/${debt.id}`)}
             onToggleVisibility={toggleVisibility}
             isHidden={isHidden}
             hiddenCount={hiddenCount}
@@ -127,12 +116,6 @@ export function DebtPageClient() {
           />
         </div>
       </div>
-
-      <DebtForm
-        open={formOpen}
-        onOpenChange={handleFormClose}
-        debt={editingDebt}
-      />
 
       <Dialog
         open={!!deletingDebt}

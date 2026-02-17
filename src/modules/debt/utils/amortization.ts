@@ -224,6 +224,7 @@ export function generateTimeline(
 
   const capped = Math.min(maxTotalMonths, 240); // cap at 20 years
   const rows: TimelineRow[] = [];
+  const nowLabel = format(now, "MMM yyyy");
 
   // Track running balances per debt for iterative month-by-month calculation
   const runningBalances = debtInfos.map((info) => ({
@@ -247,11 +248,16 @@ export function generateTimeline(
       const monthsSinceDebtStart = differenceInMonths(date, info.effectiveStart);
 
       if (monthsSinceDebtStart < 0) {
-        row[info.debt.name] = 0;
+        row[info.debt.id] = 0;
         continue;
       }
 
-      if (!running.started) {
+      // At the current month, snap to actual stored balance so the chart
+      // matches the debt detail view and Total Debt card exactly.
+      if (monthLabel === nowLabel) {
+        running.balance = info.debt.balance;
+        running.activePayment = info.debt.minimumPayment - info.feeTotal;
+      } else if (!running.started) {
         // First month of this debt — use original balance
         running.started = true;
         running.balance = info.originalBalance;
@@ -279,7 +285,7 @@ export function generateTimeline(
       }
 
       const bal = Math.max(Math.round(running.balance * 100) / 100, 0);
-      row[info.debt.name] = bal;
+      row[info.debt.id] = bal;
       row.total += bal;
     }
 

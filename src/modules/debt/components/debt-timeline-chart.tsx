@@ -26,7 +26,6 @@ import {
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
   type ChartConfig,
@@ -54,6 +53,65 @@ const TIME_PERIOD_LABELS: Record<TimePeriod, string> = {
   next_24m: "Next 24 Months",
 };
 
+function DebtTimelineTooltip({
+  active,
+  payload,
+  label,
+  debts,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+  debts: Debt[];
+}) {
+  if (!active || !payload?.length) return null;
+
+  const debtMap = new Map(debts.map((d) => [d.id, d]));
+  const total = payload
+    .filter((item) => item.name !== "simulation")
+    .reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+
+  return (
+    <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
+      <div className="mb-2 font-medium">{label}</div>
+      <div className="grid gap-1.5">
+        {payload
+          .filter((item) => item.name !== "simulation")
+          .map((item, index) => {
+            const debt = debtMap.get(item.name);
+            return (
+              <div key={index} className="flex items-center gap-2">
+                <div
+                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                  style={{ backgroundColor: item.color }}
+                />
+                <div className="flex flex-1 items-baseline justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-foreground font-medium">
+                      {debt?.name ?? item.name}
+                    </span>
+                    {debt?.lender && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {debt.lender}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-foreground font-mono font-medium tabular-nums">
+                    {formatCurrency(Number(item.value))}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+      <div className="border-border mt-2 flex justify-between border-t pt-2 font-medium">
+        <span>Total</span>
+        <span className="font-mono tabular-nums">{formatCurrency(total)}</span>
+      </div>
+    </div>
+  );
+}
+
 type DebtTimelineChartProps = {
   debts: Debt[];
   simulation?: SimulationResult | null;
@@ -78,8 +136,8 @@ export function DebtTimelineChart({
     const config: ChartConfig = {};
     debts.forEach((debt, i) => {
       const color = debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
-      config[debt.name] = {
-        label: debt.name,
+      config[debt.id] = {
+        label: debt.lender ? `${debt.name} · ${debt.lender}` : debt.name,
         color,
       };
     });
@@ -210,13 +268,7 @@ export function DebtTimelineChart({
               }
             />
             <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  formatter={(value) =>
-                    `S/. ${Number(value).toLocaleString("es-PE", { minimumFractionDigits: 2 })}`
-                  }
-                />
-              }
+              content={<DebtTimelineTooltip debts={debts} />}
             />
             <ChartLegend content={<ChartLegendContent key="debt-legend" />} />
             <ReferenceLine
@@ -248,7 +300,7 @@ export function DebtTimelineChart({
                 <Area
                   key={debt.id}
                   type="monotone"
-                  dataKey={debt.name}
+                  dataKey={debt.id}
                   stackId="debts"
                   fill={color}
                   stroke={color}

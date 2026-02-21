@@ -63,6 +63,7 @@ export const createDebtSchema = z.object({
   hasSchedule: z.boolean().optional().default(false),
   termMonths: z.number().int().positive().nullable().optional(),
   installments: z.array(installmentInputSchema).optional(),
+  fundingAccountId: z.string().cuid().nullable().optional(),
 });
 
 export const updateDebtSchema = createDebtSchema.partial().extend({

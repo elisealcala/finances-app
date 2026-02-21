@@ -40,6 +40,8 @@ const navItems = [
       { title: "Income", url: "/dashboard/finances/incomes" },
       { title: "Transfers", url: "/dashboard/finances/transfers" },
       { title: "Budget", url: "/dashboard/finances/budget" },
+      { title: "Predictions", url: "/dashboard/finances/predictions" },
+      { title: "Recurring", url: "/dashboard/finances/recurring" },
     ],
   },
   {

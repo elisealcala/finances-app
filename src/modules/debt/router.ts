@@ -23,6 +23,10 @@ import {
   parseFees,
   computeScheduleBalance,
 } from "./utils/balance";
+import {
+  recordDebtPaymentExpense,
+  recordDebtFreePaymentExpense,
+} from "@/modules/prediction/lib/sync";
 
 const includePayments = { payments: { orderBy: { date: "desc" as const } } };
 
@@ -89,7 +93,7 @@ export const debtRouter = router({
   create: publicProcedure
     .input(createDebtSchema)
     .mutation(async ({ ctx, input }) => {
-      const { capitalPayments, fees, installments, ...debtData } = input;
+      const { capitalPayments, fees, installments, fundingAccountId, ...debtData } = input;
       const totalPaid = (capitalPayments ?? []).reduce(
         (sum, p) => sum + p.amount,
         0,
@@ -261,13 +265,42 @@ export const debtRouter = router({
         });
       });
 
+      // Create FundingLink and RecurringTransaction if funding account specified
+      if (fundingAccountId) {
+        await ctx.db.fundingLink.create({
+          data: {
+            sourceAccountId: fundingAccountId,
+            debtId: debt.id,
+          },
+        });
+
+        const paymentAmount = hasSchedule && installments?.length
+          ? installments[0].capital + installments[0].interest + (installments[0].fees?.reduce((s, f) => s + f.amount, 0) ?? 0)
+          : currentMinPayment;
+
+        await ctx.db.recurringTransaction.create({
+          data: {
+            name: `${debtData.name} payment`,
+            amount: new Prisma.Decimal(paymentAmount),
+            type: "EXPENSE",
+            frequency: "MONTHLY",
+            dayOfMonth: debtData.dueDate ?? null,
+            startDate: new Date(),
+            isActive: true,
+            accountId: fundingAccountId,
+            debtId: debt.id,
+          },
+        });
+      }
+
       return serializeDebt(debt);
     }),
 
   update: publicProcedure
     .input(updateDebtSchema)
     .mutation(async ({ ctx, input }) => {
-      const { id, capitalPayments: _capitalPayments, fees, ...data } = input;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, capitalPayments, fees, ...data } = input;
 
       const currentDebt = await ctx.db.debt.findUnique({
         where: { id },
@@ -492,6 +525,20 @@ export const debtRouter = router({
         });
       });
 
+      // Auto-create expense if debt has a funding link
+      const fundingLink = await ctx.db.fundingLink.findFirst({
+        where: { debtId: input.debtId },
+      });
+      if (fundingLink) {
+        await recordDebtFreePaymentExpense(
+          ctx.db,
+          debt.name,
+          input.amount,
+          input.date,
+          fundingLink.sourceAccountId,
+        );
+      }
+
       return serializeDebt(updated);
     }),
 
@@ -593,6 +640,33 @@ export const debtRouter = router({
           },
         });
       });
+
+      // Auto-create expense if debt has a funding link
+      const fundingLink = await ctx.db.fundingLink.findFirst({
+        where: { debtId: installment.debtId },
+      });
+      if (fundingLink) {
+        await recordDebtPaymentExpense(
+          ctx.db,
+          installment.debt.name,
+          installment.installmentNumber,
+          Number(installment.totalAmount),
+          input.paidAt ?? new Date(),
+          fundingLink.sourceAccountId,
+        );
+
+        // Update recurring transaction amount to match next pending installment
+        const nextPending = await ctx.db.debtInstallment.findFirst({
+          where: { debtId: installment.debtId, status: "PENDING" },
+          orderBy: { dueDate: "asc" },
+        });
+        if (nextPending) {
+          await ctx.db.recurringTransaction.updateMany({
+            where: { debtId: installment.debtId },
+            data: { amount: nextPending.totalAmount },
+          });
+        }
+      }
 
       return serializeDebt(updated);
     }),

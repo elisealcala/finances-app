@@ -8,12 +8,13 @@ import {
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  Landmark,
+  Shield,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useDebts } from "@/modules/debt/hooks/use-debts";
 import { usePeriodSummary } from "@/modules/finances/hooks/use-overview";
-import { useAccounts } from "@/modules/finances/hooks/use-accounts";
+import { useAvailableBalances } from "@/modules/prediction/hooks/use-projection";
+import { AlertBanner } from "@/modules/prediction/components/alert-banner";
 import Link from "next/link";
 
 export function DashboardOverview() {
@@ -23,14 +24,15 @@ export function DashboardOverview() {
     now.getFullYear(),
     now.getMonth() + 1,
   );
-  const { data: accountsData } = useAccounts();
+  const { data: availableData } = useAvailableBalances();
 
   const totalDebt = debtData?.summary?.totalDebt ?? 0;
   const activeDebts = debtData?.summary?.activeCount ?? 0;
   const totalIncome = periodData?.totalIncome ?? 0;
   const totalExpenses = periodData?.totalExpenses ?? 0;
   const savings = periodData?.savings ?? 0;
-  const accountCount = accountsData?.accounts?.length ?? 0;
+  const totalAvailable = availableData?.reduce((sum, a) => sum + a.available, 0) ?? 0;
+  const totalBalance = availableData?.reduce((sum, a) => sum + a.balance, 0) ?? 0;
 
   const isLoading = !debtData && !periodData;
 
@@ -42,6 +44,8 @@ export function DashboardOverview() {
           Welcome to your personal finance tracker.
         </p>
       </div>
+
+      <AlertBanner />
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -130,16 +134,18 @@ export function DashboardOverview() {
             </Card>
           </Link>
 
-          <Link href="/dashboard/finances/accounts">
+          <Link href="/dashboard/finances/predictions">
             <Card className="transition-colors hover:border-primary/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Accounts</CardTitle>
-                <Landmark className="text-muted-foreground h-4 w-4" />
+                <CardTitle className="text-sm font-medium">Available</CardTitle>
+                <Shield className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{accountCount}</div>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(totalAvailable)}
+                </div>
                 <p className="text-muted-foreground text-xs">
-                  Active accounts
+                  of {formatCurrency(totalBalance)} total balance
                 </p>
               </CardContent>
             </Card>

@@ -1,0 +1,1 @@
+export { predictionRouter } from "./router";

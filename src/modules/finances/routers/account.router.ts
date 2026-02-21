@@ -139,7 +139,8 @@ export const accountRouter = router({
   update: publicProcedure
     .input(updateAccountSchema)
     .mutation(async ({ ctx, input }) => {
-      const { id, linkToDebt: _linkToDebt, ...data } = input;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, linkToDebt, ...data } = input;
 
       const updateData: Prisma.AccountUpdateInput = {};
       if (data.name !== undefined) updateData.name = data.name;

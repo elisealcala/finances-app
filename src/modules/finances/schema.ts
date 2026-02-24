@@ -246,6 +246,21 @@ export const closeStatementSchema = z.object({
   id: z.string().cuid(),
 });
 
+export const payStatementSchema = z.object({
+  id: z.string().cuid(),
+  paymentDate: z.date(),
+  exchangeRates: z
+    .array(
+      z.object({
+        fromCurrency: currencySchema,
+        toCurrency: currencySchema,
+        rate: z.number().positive("Exchange rate must be positive"),
+      }),
+    )
+    .optional()
+    .default([]),
+});
+
 // ============================================
 // Overview Schemas
 // ============================================
@@ -287,3 +302,4 @@ export type CreateStatementInput = z.infer<typeof createStatementSchema>;
 export type UpdateStatementInput = z.infer<typeof updateStatementSchema>;
 export type ListStatementsInput = z.infer<typeof listStatementsSchema>;
 export type MarkExpensePaidInput = z.infer<typeof markExpensePaidSchema>;
+export type PayStatementInput = z.infer<typeof payStatementSchema>;

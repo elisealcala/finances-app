@@ -57,7 +57,16 @@ export const transferRouter = router({
       const transfers = rawTransfers.map(serializeTransfer);
       const total = transfers.reduce((sum, t) => sum + t.amount, 0);
 
-      return { transfers, total };
+      const totalsByCurrency: Record<string, number> = {};
+      for (const t of rawTransfers) {
+        const currency =
+          (t as unknown as { fromAccount?: { currency?: string } }).fromAccount
+            ?.currency ?? "PEN";
+        totalsByCurrency[currency] =
+          (totalsByCurrency[currency] ?? 0) + Number(t.amount);
+      }
+
+      return { transfers, total, totalsByCurrency };
     }),
 
   create: publicProcedure

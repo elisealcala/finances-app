@@ -9,9 +9,15 @@ export function useStatements(input?: ListStatementsInput) {
   return useQuery(trpc.finances.statement.list.queryOptions(input));
 }
 
-export function useStatement(id: string) {
+export function useStatement(
+  id: string,
+  options?: { enabled?: boolean },
+) {
   const trpc = useTRPC();
-  return useQuery(trpc.finances.statement.getById.queryOptions({ id }));
+  return useQuery({
+    ...trpc.finances.statement.getById.queryOptions({ id }),
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useCreateStatement() {
@@ -54,6 +60,29 @@ export function useCloseStatement() {
       });
       queryClient.invalidateQueries({
         queryKey: trpc.finances.expense.list.queryKey(),
+      });
+    },
+  });
+}
+
+export function usePayStatement() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...trpc.finances.statement.pay.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.transfer.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
       });
     },
   });

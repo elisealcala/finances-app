@@ -54,7 +54,16 @@ export const incomeRouter = router({
       const incomes = rawIncomes.map(serializeIncome);
       const total = incomes.reduce((sum, i) => sum + i.amount, 0);
 
-      return { incomes, total };
+      const totalsByCurrency: Record<string, number> = {};
+      for (const i of rawIncomes) {
+        const currency =
+          (i as unknown as { account?: { currency?: string } }).account
+            ?.currency ?? "PEN";
+        totalsByCurrency[currency] =
+          (totalsByCurrency[currency] ?? 0) + Number(i.amount);
+      }
+
+      return { incomes, total, totalsByCurrency };
     }),
 
   create: publicProcedure

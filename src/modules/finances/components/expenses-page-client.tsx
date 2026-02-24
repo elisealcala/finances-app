@@ -10,8 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useAccounts } from "../hooks/use-accounts";
 import { useExpenses, useDeleteExpense, useMarkExpensePaid } from "../hooks/use-expenses";
 import { usePeriodFilter } from "../hooks/use-period-filter";
 import { MonthYearFilter } from "./month-year-filter";
@@ -21,9 +29,12 @@ import type { Expense } from "../types";
 
 export function ExpensesPageClient() {
   const period = usePeriodFilter();
+  const [accountId, setAccountId] = useState<string | undefined>();
+  const { data: accountsData } = useAccounts();
   const { data, isLoading } = useExpenses({
     year: period.year,
     month: period.month,
+    accountId,
   });
   const deleteExpense = useDeleteExpense();
   const markPaid = useMarkExpensePaid();
@@ -33,7 +44,7 @@ export function ExpensesPageClient() {
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
   const expenses = (data?.expenses ?? []) as Expense[];
-  const total = data?.total ?? 0;
+  const totalsByCurrency = (data?.totalsByCurrency ?? {}) as Record<string, number>;
 
   function handleEdit(expense: Expense) {
     setEditingExpense(expense);
@@ -57,7 +68,12 @@ export function ExpensesPageClient() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Expenses</h2>
           <p className="text-muted-foreground">
-            Track your spending. Total: {formatCurrency(total)}
+            Track your spending. Total:{" "}
+            {Object.entries(totalsByCurrency)
+              .map(([currency, amount]) =>
+                formatCurrency(amount, currency as "PEN" | "USD" | "EUR")
+              )
+              .join(" / ") || formatCurrency(0)}
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)}>
@@ -66,15 +82,33 @@ export function ExpensesPageClient() {
         </Button>
       </div>
 
-      <MonthYearFilter
-        year={period.year}
-        month={period.month}
-        onYearChange={period.setYear}
-        onMonthChange={period.setMonth}
-        onPrev={period.goToPrevMonth}
-        onNext={period.goToNextMonth}
-        onToday={period.goToCurrentMonth}
-      />
+      <div className="flex items-center gap-4">
+        <MonthYearFilter
+          year={period.year}
+          month={period.month}
+          onYearChange={period.setYear}
+          onMonthChange={period.setMonth}
+          onPrev={period.goToPrevMonth}
+          onNext={period.goToNextMonth}
+          onToday={period.goToCurrentMonth}
+        />
+        <Select
+          value={accountId ?? "all"}
+          onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All accounts</SelectItem>
+            {accountsData?.accounts?.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <ExpenseTable
         expenses={expenses}

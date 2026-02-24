@@ -25,6 +25,7 @@ import {
   Trash2,
   FileText,
   CreditCard,
+  Banknote,
 } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
@@ -35,6 +36,7 @@ import {
 } from "../hooks/use-statements";
 import { useAccounts } from "../hooks/use-accounts";
 import { StatementForm } from "./statement-form";
+import { PayStatementDialog } from "./pay-statement-dialog";
 import type { Account, CreditCardStatement } from "../types";
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
@@ -58,6 +60,8 @@ export function StatementsPageClient() {
   const [deletingStatement, setDeletingStatement] =
     useState<CreditCardStatement | null>(null);
   const [closingStatement, setClosingStatement] =
+    useState<CreditCardStatement | null>(null);
+  const [payingStatement, setPayingStatement] =
     useState<CreditCardStatement | null>(null);
 
   const { data: accountsData } = useAccounts({ isArchived: false });
@@ -228,6 +232,16 @@ export function StatementsPageClient() {
                         Close
                       </Button>
                     )}
+                    {statement.status === "CLOSED" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setPayingStatement(statement)}
+                      >
+                        <Banknote className="mr-1 h-3 w-3" />
+                        Pay
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -313,6 +327,12 @@ export function StatementsPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PayStatementDialog
+        open={!!payingStatement}
+        onOpenChange={(open) => !open && setPayingStatement(null)}
+        statement={payingStatement}
+      />
     </div>
   );
 }

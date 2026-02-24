@@ -60,7 +60,18 @@ export const expenseRouter = router({
       const expenses = rawExpenses.map(serializeExpense);
       const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-      return { expenses, total };
+      const totalsByCurrency: Record<string, number> = {};
+      for (const e of rawExpenses) {
+        const currency =
+          e.currency ??
+          (e as unknown as { account?: { currency?: string } }).account
+            ?.currency ??
+          "PEN";
+        totalsByCurrency[currency] =
+          (totalsByCurrency[currency] ?? 0) + Number(e.amount);
+      }
+
+      return { expenses, total, totalsByCurrency };
     }),
 
   create: publicProcedure

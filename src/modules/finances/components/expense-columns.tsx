@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, PAYMENT_STATUS_LABELS } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Expense } from "../types";
@@ -28,7 +28,17 @@ export function getExpenseColumns({
   return [
     {
       accessorKey: "date",
-      header: "Date",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Date
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => format(new Date(row.getValue("date")), "dd-MM-yyyy"),
     },
     {

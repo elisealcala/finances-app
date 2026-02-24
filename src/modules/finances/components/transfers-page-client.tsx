@@ -10,8 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useAccounts } from "../hooks/use-accounts";
 import { useTransfers, useDeleteTransfer } from "../hooks/use-transfers";
 import { usePeriodFilter } from "../hooks/use-period-filter";
 import { MonthYearFilter } from "./month-year-filter";
@@ -21,9 +29,12 @@ import type { Transfer } from "../types";
 
 export function TransfersPageClient() {
   const period = usePeriodFilter();
+  const [accountId, setAccountId] = useState<string | undefined>();
+  const { data: accountsData } = useAccounts();
   const { data, isLoading } = useTransfers({
     year: period.year,
     month: period.month,
+    accountId,
   });
   const deleteTransfer = useDeleteTransfer();
 
@@ -34,7 +45,7 @@ export function TransfersPageClient() {
   );
 
   const transfers = (data?.transfers ?? []) as Transfer[];
-  const total = data?.total ?? 0;
+  const totalsByCurrency = (data?.totalsByCurrency ?? {}) as Record<string, number>;
 
   function handleEdit(transfer: Transfer) {
     setEditingTransfer(transfer);
@@ -58,7 +69,12 @@ export function TransfersPageClient() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Transfers</h2>
           <p className="text-muted-foreground">
-            Move money between accounts. Total: {formatCurrency(total)}
+            Move money between accounts. Total:{" "}
+            {Object.entries(totalsByCurrency)
+              .map(([currency, amount]) =>
+                formatCurrency(amount, currency as "PEN" | "USD" | "EUR")
+              )
+              .join(" / ") || formatCurrency(0)}
           </p>
         </div>
         <Button onClick={() => setFormOpen(true)}>
@@ -67,15 +83,33 @@ export function TransfersPageClient() {
         </Button>
       </div>
 
-      <MonthYearFilter
-        year={period.year}
-        month={period.month}
-        onYearChange={period.setYear}
-        onMonthChange={period.setMonth}
-        onPrev={period.goToPrevMonth}
-        onNext={period.goToNextMonth}
-        onToday={period.goToCurrentMonth}
-      />
+      <div className="flex items-center gap-4">
+        <MonthYearFilter
+          year={period.year}
+          month={period.month}
+          onYearChange={period.setYear}
+          onMonthChange={period.setMonth}
+          onPrev={period.goToPrevMonth}
+          onNext={period.goToNextMonth}
+          onToday={period.goToCurrentMonth}
+        />
+        <Select
+          value={accountId ?? "all"}
+          onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All accounts</SelectItem>
+            {accountsData?.accounts?.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <TransferTable
         transfers={transfers}

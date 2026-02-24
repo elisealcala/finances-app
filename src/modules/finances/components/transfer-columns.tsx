@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Transfer } from "../types";
@@ -25,7 +25,17 @@ export function getTransferColumns({
   return [
     {
       accessorKey: "date",
-      header: "Date",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Date
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => format(new Date(row.getValue("date")), "dd-MM-yyyy"),
     },
     {

@@ -48,7 +48,10 @@ export const transferRouter = router({
       const rawTransfers = await ctx.db.transfer.findMany({
         where,
         orderBy: { [sortBy]: sortOrder },
-        include: { fromAccount: true, toAccount: true },
+        include: {
+          fromAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+          toAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+        },
       });
 
       const transfers = rawTransfers.map(serializeTransfer);
@@ -69,7 +72,10 @@ export const transferRouter = router({
           fromAccountId: input.fromAccountId,
           toAccountId: input.toAccountId,
         },
-        include: { fromAccount: true, toAccount: true },
+        include: {
+          fromAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+          toAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+        },
       });
       return serializeTransfer(transfer);
     }),
@@ -94,7 +100,10 @@ export const transferRouter = router({
         const transfer = await ctx.db.transfer.update({
           where: { id },
           data: updateData,
-          include: { fromAccount: true, toAccount: true },
+          include: {
+          fromAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+          toAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
+        },
         });
         return serializeTransfer(transfer);
       } catch (error) {

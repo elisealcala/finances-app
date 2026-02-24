@@ -184,30 +184,42 @@ enum Currency {
   EUR
 }
 
-model Account {
-  id            String      @id @default(cuid())
-  name          String
-  type          AccountType
-  opening       Decimal     @db.Decimal(12, 2)
-  currency      Currency    @default(PEN)
-  color         String?
-  notes         String?
-  isArchived    Boolean     @default(false) @map("is_archived")
-  creditLimit   Decimal?    @map("credit_limit") @db.Decimal(12, 2)
-  apr           Decimal?    @db.Decimal(5, 2)
-  billingDay    Int?        @map("billing_day")
-  paymentDueDay Int?        @map("payment_due_day")
-  debtId        String?     @unique @map("debt_id")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+enum StatementStatus {
+  OPEN
+  CLOSED
+  PAID
+}
 
-  debt                  Debt?       @relation(fields: [debtId], references: [id])
+model Account {
+  id                     String      @id @default(cuid())
+  name                   String
+  type                   AccountType
+  opening                Decimal     @db.Decimal(12, 2)
+  currency               Currency    @default(PEN)
+  secondaryCurrency      Currency?   @map("secondary_currency")
+  color                  String?
+  notes                  String?
+  isArchived             Boolean     @default(false) @map("is_archived")
+  creditLimit            Decimal?    @map("credit_limit") @db.Decimal(12, 2)
+  apr                    Decimal?    @db.Decimal(5, 2)
+  billingDay             Int?        @map("billing_day")
+  paymentDueDay          Int?        @map("payment_due_day")
+  defaultPayingAccountId String?     @map("default_paying_account_id")
+  debtId                 String?     @unique @map("debt_id")
+  createdAt              DateTime    @default(now()) @map("created_at")
+  updatedAt              DateTime    @updatedAt @map("updated_at")
+
+  debt                  Debt?                  @relation(fields: [debtId], references: [id])
+  defaultPayingAccount  Account?               @relation("DefaultPayingAccount", fields: [defaultPayingAccountId], references: [id])
+  defaultPayingFor      Account[]              @relation("DefaultPayingAccount")
   expenses              Expense[]
+  expensesPaying        Expense[]              @relation("ExpensePayingAccount")
   incomes               Income[]
-  transfersFrom         Transfer[]  @relation("TransferFrom")
-  transfersTo           Transfer[]  @relation("TransferTo")
+  transfersFrom         Transfer[]             @relation("TransferFrom")
+  transfersTo           Transfer[]             @relation("TransferTo")
   recurringTransactions RecurringTransaction[]
   fundingFrom           FundingLink[]
+  statements            CreditCardStatement[]
 
   @@map("accounts")
 }
@@ -230,21 +242,28 @@ model Category {
 }
 
 model Expense {
-  id            String        @id @default(cuid())
-  name          String
-  amount        Decimal       @db.Decimal(12, 2)
-  date          DateTime
-  paymentStatus PaymentStatus @default(PAID) @map("payment_status")
-  notes         String?
-  accountId     String        @map("account_id")
-  categoryId    String?       @map("category_id")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(cuid())
+  name            String
+  amount          Decimal       @db.Decimal(12, 2)
+  date            DateTime
+  paymentStatus   PaymentStatus @default(PAID) @map("payment_status")
+  currency        Currency?
+  notes           String?
+  accountId       String        @map("account_id")
+  categoryId      String?       @map("category_id")
+  payingAccountId String?       @map("paying_account_id")
+  paymentDueDate  DateTime?     @map("payment_due_date")
+  statementId     String?       @map("statement_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  account  Account   @relation(fields: [accountId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
+  account       Account               @relation(fields: [accountId], references: [id])
+  category      Category?             @relation(fields: [categoryId], references: [id])
+  payingAccount Account?              @relation("ExpensePayingAccount", fields: [payingAccountId], references: [id])
+  statement     CreditCardStatement?  @relation(fields: [statementId], references: [id])
 
   @@index([date])
+  @@index([statementId])
   @@map("expenses")
 }
 
@@ -264,6 +283,27 @@ model Income {
 
   @@index([date])
   @@map("incomes")
+}
+
+model CreditCardStatement {
+  id               String          @id @default(cuid())
+  accountId        String          @map("account_id")
+  month            Int
+  year             Int
+  billingCloseDate DateTime        @map("billing_close_date")
+  paymentDueDate   DateTime        @map("payment_due_date")
+  totalAmount      Decimal?        @map("total_amount") @db.Decimal(12, 2)
+  status           StatementStatus @default(OPEN)
+  notes            String?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@unique([accountId, month, year])
+  @@index([accountId])
+  @@map("credit_card_statements")
 }
 
 model Transfer {

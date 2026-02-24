@@ -45,7 +45,10 @@ export const incomeRouter = router({
       const rawIncomes = await ctx.db.income.findMany({
         where,
         orderBy: { [sortBy]: sortOrder },
-        include: { account: true, category: true },
+        include: {
+          account: { select: { id: true, name: true, currency: true, type: true, color: true } },
+          category: { select: { id: true, name: true, color: true, icon: true } },
+        },
       });
 
       const incomes = rawIncomes.map(serializeIncome);
@@ -66,7 +69,10 @@ export const incomeRouter = router({
           accountId: input.accountId,
           categoryId: input.categoryId ?? null,
         },
-        include: { account: true, category: true },
+        include: {
+          account: { select: { id: true, name: true, currency: true, type: true, color: true } },
+          category: { select: { id: true, name: true, color: true, icon: true } },
+        },
       });
       return serializeIncome(income);
     }),
@@ -93,7 +99,10 @@ export const incomeRouter = router({
         const income = await ctx.db.income.update({
           where: { id },
           data: updateData,
-          include: { account: true, category: true },
+          include: {
+            account: { select: { id: true, name: true, currency: true, type: true, color: true } },
+            category: { select: { id: true, name: true, color: true, icon: true } },
+          },
         });
         return serializeIncome(income);
       } catch (error) {

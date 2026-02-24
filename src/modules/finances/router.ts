@@ -5,6 +5,7 @@ import { expenseRouter } from "./routers/expense.router";
 import { incomeRouter } from "./routers/income.router";
 import { transferRouter } from "./routers/transfer.router";
 import { overviewRouter } from "./routers/overview.router";
+import { statementRouter } from "./routers/statement.router";
 
 export const financesRouter = router({
   account: accountRouter,
@@ -13,4 +14,5 @@ export const financesRouter = router({
   income: incomeRouter,
   transfer: transferRouter,
   overview: overviewRouter,
+  statement: statementRouter,
 });

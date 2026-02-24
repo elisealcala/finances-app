@@ -4,12 +4,14 @@ import type {
   Expense as PrismaExpense,
   Income as PrismaIncome,
   Transfer as PrismaTransfer,
+  CreditCardStatement as PrismaCreditCardStatement,
 } from "@/generated/prisma/client";
 
 export {
   AccountType,
   PaymentStatus,
   Currency,
+  StatementStatus,
 } from "@/generated/prisma/client";
 
 /** Serialized Account with Decimal fields converted to number */
@@ -37,6 +39,8 @@ export type Expense = Omit<PrismaExpense, "amount"> & {
   amount: number;
   account?: Account;
   category?: Category | null;
+  payingAccount?: Account | null;
+  statement?: CreditCardStatement | null;
 };
 
 /** Serialized Income with Decimal fields converted to number */
@@ -66,6 +70,20 @@ export type MonthlySummaryItem = {
   income: number;
   expenses: number;
   savings: number;
+};
+
+/** Serialized CreditCardStatement with Decimal fields converted to number */
+export type CreditCardStatement = Omit<
+  PrismaCreditCardStatement,
+  "totalAmount"
+> & {
+  totalAmount: number | null;
+};
+
+/** CreditCardStatement with linked expenses and account */
+export type CreditCardStatementWithExpenses = CreditCardStatement & {
+  expenses: Expense[];
+  account?: Account;
 };
 
 export type BudgetStatus = {

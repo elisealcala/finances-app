@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,9 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CURRENCY_LABELS } from "@/lib/utils";
 import { useCreateExpense, useUpdateExpense } from "../hooks/use-expenses";
 import { useAccounts } from "../hooks/use-accounts";
 import { useCategories } from "../hooks/use-categories";
+import { useStatements } from "../hooks/use-statements";
 import type { Expense, Account, Category } from "../types";
 import type { CreateExpenseInput } from "../schema";
 
@@ -37,9 +39,13 @@ const INITIAL_STATE: CreateExpenseInput = {
   amount: 0,
   date: new Date(),
   paymentStatus: "PAID",
+  currency: null,
   notes: null,
   accountId: "",
   categoryId: null,
+  payingAccountId: null,
+  paymentDueDate: null,
+  statementId: null,
 };
 
 export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
@@ -47,6 +53,7 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
   const [dateStr, setDateStr] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const [paymentDueDateStr, setPaymentDueDateStr] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const createExpense = useCreateExpense();
@@ -60,6 +67,34 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
   const isEditing = !!expense;
   const isPending = createExpense.isPending || updateExpense.isPending;
 
+  // Determine if the selected account is a credit card
+  const selectedAccount = accounts.find((a) => a.id === form.accountId);
+  const isCreditCard = selectedAccount?.type === "CREDIT_CARD";
+
+  // Currency options for dual-currency cards
+  const currencyOptions = useMemo(() => {
+    if (!isCreditCard || !selectedAccount) return [];
+    const options = [selectedAccount.currency];
+    if (
+      selectedAccount.secondaryCurrency &&
+      selectedAccount.secondaryCurrency !== selectedAccount.currency
+    ) {
+      options.push(selectedAccount.secondaryCurrency);
+    }
+    return options;
+  }, [isCreditCard, selectedAccount]);
+
+  // Non-credit-card accounts for paying account selector
+  const payingAccounts = accounts.filter((a) => a.type !== "CREDIT_CARD");
+
+  // Fetch open statements for the selected credit card
+  const { data: statementsData } = useStatements(
+    isCreditCard && form.accountId
+      ? { accountId: form.accountId, status: "OPEN" }
+      : undefined,
+  );
+  const openStatements = statementsData?.statements ?? [];
+
   useEffect(() => {
     if (expense) {
       const d = new Date(expense.date);
@@ -68,17 +103,29 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
         amount: expense.amount,
         date: d,
         paymentStatus: expense.paymentStatus,
+        currency: expense.currency ?? null,
         notes: expense.notes ?? null,
         accountId: expense.accountId,
         categoryId: expense.categoryId ?? null,
+        payingAccountId: expense.payingAccountId ?? null,
+        paymentDueDate: expense.paymentDueDate
+          ? new Date(expense.paymentDueDate)
+          : null,
+        statementId: expense.statementId ?? null,
       });
       setDateStr(d.toISOString().split("T")[0]);
+      setPaymentDueDateStr(
+        expense.paymentDueDate
+          ? new Date(expense.paymentDueDate).toISOString().split("T")[0]
+          : "",
+      );
     } else {
       setForm((prev) => ({
         ...INITIAL_STATE,
         accountId: prev.accountId || "",
       }));
       setDateStr(new Date().toISOString().split("T")[0]);
+      setPaymentDueDateStr("");
     }
     setErrors({});
   }, [expense, open]);
@@ -102,7 +149,13 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
     e.preventDefault();
     if (!validate()) return;
 
-    const data = { ...form, date: new Date(dateStr) };
+    const data = {
+      ...form,
+      date: new Date(dateStr),
+      paymentDueDate: paymentDueDateStr
+        ? new Date(paymentDueDateStr)
+        : null,
+    };
 
     if (isEditing && expense) {
       await updateExpense.mutateAsync({ id: expense.id, ...data });
@@ -177,7 +230,16 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
                 <Label htmlFor="exp-account">Account *</Label>
                 <Select
                   value={form.accountId}
-                  onValueChange={(v) => setForm({ ...form, accountId: v })}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      accountId: v,
+                      // Reset CC-specific fields when changing account
+                      currency: null,
+                      statementId: null,
+                      payingAccountId: null,
+                    })
+                  }
                 >
                   <SelectTrigger id="exp-account">
                     <SelectValue placeholder="Select account" />
@@ -219,6 +281,109 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
                 </Select>
               </div>
             </div>
+
+            {/* Credit card specific fields */}
+            {isCreditCard && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {currencyOptions.length > 1 && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="exp-currency">Currency</Label>
+                      <Select
+                        value={
+                          form.currency ??
+                          selectedAccount?.currency ??
+                          "PEN"
+                        }
+                        onValueChange={(v) =>
+                          setForm({
+                            ...form,
+                            currency: v as CreateExpenseInput["currency"],
+                          })
+                        }
+                      >
+                        <SelectTrigger id="exp-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencyOptions.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {CURRENCY_LABELS[c as keyof typeof CURRENCY_LABELS] ?? c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="exp-paying-account">Paying Account</Label>
+                    <Select
+                      value={form.payingAccountId ?? "none"}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          payingAccountId: v === "none" ? null : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="exp-paying-account">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {payingAccounts.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="exp-statement">Statement</Label>
+                    <Select
+                      value={form.statementId ?? "none"}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          statementId: v === "none" ? null : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="exp-statement">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {openStatements.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.month}/{s.year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {!form.statementId && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="exp-payment-due">Payment Due Date</Label>
+                      <Input
+                        id="exp-payment-due"
+                        type="date"
+                        value={paymentDueDateStr}
+                        onChange={(e) =>
+                          setPaymentDueDateStr(e.target.value)
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="exp-notes">Notes</Label>

@@ -128,6 +128,8 @@ export const accountRouter = router({
           apr: input.apr != null ? new Prisma.Decimal(input.apr) : null,
           billingDay: input.billingDay ?? null,
           paymentDueDay: input.paymentDueDay ?? null,
+          secondaryCurrency: input.secondaryCurrency ?? null,
+          defaultPayingAccountId: input.defaultPayingAccountId ?? null,
           debtId,
         },
       });
@@ -162,6 +164,12 @@ export const accountRouter = router({
       if (data.billingDay !== undefined) updateData.billingDay = data.billingDay;
       if (data.paymentDueDay !== undefined)
         updateData.paymentDueDay = data.paymentDueDay;
+      if (data.secondaryCurrency !== undefined)
+        updateData.secondaryCurrency = data.secondaryCurrency;
+      if (data.defaultPayingAccountId !== undefined)
+        updateData.defaultPayingAccount = data.defaultPayingAccountId
+          ? { connect: { id: data.defaultPayingAccountId } }
+          : { disconnect: true };
 
       try {
         const account = await ctx.db.account.update({

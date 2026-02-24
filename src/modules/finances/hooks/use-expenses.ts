@@ -59,3 +59,23 @@ export function useDeleteExpense() {
     },
   });
 }
+
+export function useMarkExpensePaid() {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...trpc.finances.expense.markPaid.mutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.transfer.list.queryKey(),
+      });
+    },
+  });
+}

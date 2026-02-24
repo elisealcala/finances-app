@@ -39,7 +39,11 @@ export function getExpenseColumns({
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => formatCurrency(Number(row.getValue("amount"))),
+      cell: ({ row }) => {
+        const expense = row.original;
+        const currency = expense.currency ?? expense.account?.currency ?? "PEN";
+        return formatCurrency(Number(row.getValue("amount")), currency);
+      },
     },
     {
       id: "account",
@@ -77,11 +81,19 @@ export function getExpenseColumns({
       accessorKey: "paymentStatus",
       header: "Status",
       cell: ({ row }) => {
+        const expense = row.original;
         const status = row.getValue("paymentStatus") as string;
         return (
-          <Badge variant={status === "PAID" ? "default" : "outline"}>
-            {PAYMENT_STATUS_LABELS[status] ?? status}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Badge variant={status === "PAID" ? "default" : "outline"}>
+              {PAYMENT_STATUS_LABELS[status] ?? status}
+            </Badge>
+            {expense.payingAccount && status === "NOT_PAID" && (
+              <span className="text-muted-foreground text-xs">
+                via {expense.payingAccount.name}
+              </span>
+            )}
+          </div>
         );
       },
     },

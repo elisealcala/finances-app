@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, ACCOUNT_TYPE_LABELS, CURRENCY_LABELS } from "@/lib/utils";
-import { useCreateAccount, useUpdateAccount } from "../hooks/use-accounts";
+import { useCreateAccount, useUpdateAccount, useAccounts } from "../hooks/use-accounts";
 import { FINANCE_COLOR_PALETTE } from "../lib/colors";
 import type { Account } from "../types";
 import type { CreateAccountInput } from "../schema";
@@ -44,6 +44,8 @@ const INITIAL_STATE: CreateAccountInput = {
   apr: null,
   billingDay: null,
   paymentDueDay: null,
+  secondaryCurrency: null,
+  defaultPayingAccountId: null,
   linkToDebt: false,
 };
 
@@ -53,6 +55,11 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
 
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
+  const { data: accountsData } = useAccounts({ isArchived: false });
+  const allAccounts = (accountsData?.accounts ?? []) as Account[];
+  const payingAccountOptions = allAccounts.filter(
+    (a) => a.type !== "CREDIT_CARD" && a.id !== account?.id,
+  );
 
   const isEditing = !!account;
   const isPending = createAccount.isPending || updateAccount.isPending;
@@ -72,6 +79,8 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
         apr: account.apr,
         billingDay: account.billingDay,
         paymentDueDay: account.paymentDueDay,
+        secondaryCurrency: account.secondaryCurrency ?? null,
+        defaultPayingAccountId: account.defaultPayingAccountId ?? null,
         linkToDebt: false,
       });
     } else {
@@ -284,6 +293,63 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
                       }
                       placeholder="1-31"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="secondaryCurrency">Secondary Currency</Label>
+                    <Select
+                      value={form.secondaryCurrency ?? "none"}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          secondaryCurrency:
+                            v === "none"
+                              ? null
+                              : (v as CreateAccountInput["currency"]),
+                        })
+                      }
+                    >
+                      <SelectTrigger id="secondaryCurrency">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {Object.entries(CURRENCY_LABELS)
+                          .filter(([key]) => key !== form.currency)
+                          .map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="defaultPayingAccount">Default Paying Account</Label>
+                    <Select
+                      value={form.defaultPayingAccountId ?? "none"}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          defaultPayingAccountId: v === "none" ? null : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="defaultPayingAccount">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {payingAccountOptions.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

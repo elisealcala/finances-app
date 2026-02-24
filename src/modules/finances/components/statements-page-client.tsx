@@ -191,11 +191,11 @@ export function StatementsPageClient() {
                   <div className="text-muted-foreground mt-1 space-y-1 text-sm">
                     <p>
                       Billing close:{" "}
-                      {format(new Date(statement.billingCloseDate), "MMM dd, yyyy")}
+                      {format(new Date(statement.billingCloseDate), "dd-MM-yyyy")}
                     </p>
                     <p>
                       Payment due:{" "}
-                      {format(new Date(statement.paymentDueDate), "MMM dd, yyyy")}
+                      {format(new Date(statement.paymentDueDate), "dd-MM-yyyy")}
                     </p>
                     {statement.totalAmount != null && (
                       <p className="font-medium">

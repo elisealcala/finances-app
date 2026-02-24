@@ -17,17 +17,19 @@ import type { Expense } from "../types";
 type ColumnsConfig = {
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
+  onMarkPaid: (expense: Expense) => void;
 };
 
 export function getExpenseColumns({
   onEdit,
   onDelete,
+  onMarkPaid,
 }: ColumnsConfig): ColumnDef<Expense>[] {
   return [
     {
       accessorKey: "date",
       header: "Date",
-      cell: ({ row }) => format(new Date(row.getValue("date")), "MMM dd, yyyy"),
+      cell: ({ row }) => format(new Date(row.getValue("date")), "dd-MM-yyyy"),
     },
     {
       accessorKey: "name",
@@ -85,9 +87,19 @@ export function getExpenseColumns({
         const status = row.getValue("paymentStatus") as string;
         return (
           <div className="flex items-center gap-1">
-            <Badge variant={status === "PAID" ? "default" : "outline"}>
-              {PAYMENT_STATUS_LABELS[status] ?? status}
-            </Badge>
+            {status === "NOT_PAID" ? (
+              <Badge
+                variant="outline"
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                onClick={() => onMarkPaid(expense)}
+              >
+                {PAYMENT_STATUS_LABELS[status] ?? status}
+              </Badge>
+            ) : (
+              <Badge variant="default">
+                {PAYMENT_STATUS_LABELS[status] ?? status}
+              </Badge>
+            )}
             {expense.payingAccount && status === "NOT_PAID" && (
               <span className="text-muted-foreground text-xs">
                 via {expense.payingAccount.name}

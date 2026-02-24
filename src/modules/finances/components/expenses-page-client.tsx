@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { useExpenses, useDeleteExpense } from "../hooks/use-expenses";
+import { useExpenses, useDeleteExpense, useMarkExpensePaid } from "../hooks/use-expenses";
 import { usePeriodFilter } from "../hooks/use-period-filter";
 import { MonthYearFilter } from "./month-year-filter";
 import { ExpenseTable } from "./expense-table";
@@ -26,6 +26,7 @@ export function ExpensesPageClient() {
     month: period.month,
   });
   const deleteExpense = useDeleteExpense();
+  const markPaid = useMarkExpensePaid();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -80,6 +81,9 @@ export function ExpensesPageClient() {
         isLoading={isLoading}
         onEdit={handleEdit}
         onDelete={setDeletingExpense}
+        onMarkPaid={(expense) =>
+          markPaid.mutate({ expenseId: expense.id, createTransfer: true })
+        }
       />
 
       <ExpenseForm

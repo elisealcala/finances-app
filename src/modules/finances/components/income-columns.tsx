@@ -27,7 +27,7 @@ export function getIncomeColumns({
     {
       accessorKey: "date",
       header: "Date",
-      cell: ({ row }) => format(new Date(row.getValue("date")), "MMM dd, yyyy"),
+      cell: ({ row }) => format(new Date(row.getValue("date")), "dd-MM-yyyy"),
     },
     {
       accessorKey: "name",

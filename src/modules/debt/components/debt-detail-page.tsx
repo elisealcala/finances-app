@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 import { formatCurrency, formatPercentage, DEBT_TYPE_LABELS } from "@/lib/utils";
 import { useDebt } from "../hooks/use-debts";
 import {
@@ -235,7 +236,7 @@ export function DebtDetailPage({ debtId }: DebtDetailPageProps) {
                     {p.notes && <p className="text-muted-foreground text-xs">{p.notes}</p>}
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {new Date(p.date).toLocaleDateString("es-PE")}
+                    {format(new Date(p.date), "dd-MM-yyyy")}
                   </p>
                 </div>
               ))}

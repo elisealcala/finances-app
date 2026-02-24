@@ -151,9 +151,9 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
 
     const data = {
       ...form,
-      date: new Date(dateStr),
+      date: new Date(`${dateStr}T00:00:00`),
       paymentDueDate: paymentDueDateStr
-        ? new Date(paymentDueDateStr)
+        ? new Date(`${paymentDueDateStr}T00:00:00`)
         : null,
     };
 

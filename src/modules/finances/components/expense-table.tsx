@@ -25,6 +25,7 @@ type ExpenseTableProps = {
   isLoading?: boolean;
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
+  onMarkPaid: (expense: Expense) => void;
 };
 
 export function ExpenseTable({
@@ -32,9 +33,10 @@ export function ExpenseTable({
   isLoading,
   onEdit,
   onDelete,
+  onMarkPaid,
 }: ExpenseTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const columns = getExpenseColumns({ onEdit, onDelete });
+  const columns = getExpenseColumns({ onEdit, onDelete, onMarkPaid });
 
   const table = useReactTable({
     data: expenses,

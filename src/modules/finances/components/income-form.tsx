@@ -100,7 +100,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
     e.preventDefault();
     if (!validate()) return;
 
-    const data = { ...form, date: new Date(dateStr) };
+    const data = { ...form, date: new Date(`${dateStr}T00:00:00`) };
 
     if (isEditing && income) {
       await updateIncome.mutateAsync({ id: income.id, ...data });

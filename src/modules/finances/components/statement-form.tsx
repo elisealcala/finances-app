@@ -142,8 +142,8 @@ export function StatementForm({
     if (isEditing && statement) {
       await updateStatement.mutateAsync({
         id: statement.id,
-        billingCloseDate: new Date(billingCloseDateStr),
-        paymentDueDate: new Date(paymentDueDateStr),
+        billingCloseDate: new Date(`${billingCloseDateStr}T00:00:00`),
+        paymentDueDate: new Date(`${paymentDueDateStr}T00:00:00`),
         notes: notes || null,
       });
     } else {
@@ -151,8 +151,8 @@ export function StatementForm({
         accountId,
         month,
         year,
-        billingCloseDate: new Date(billingCloseDateStr),
-        paymentDueDate: new Date(paymentDueDateStr),
+        billingCloseDate: new Date(`${billingCloseDateStr}T00:00:00`),
+        paymentDueDate: new Date(`${paymentDueDateStr}T00:00:00`),
         notes: notes || null,
       };
       await createStatement.mutateAsync(data);

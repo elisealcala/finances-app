@@ -65,7 +65,7 @@ export function UpcomingObligations() {
               {data.map((obligation) => (
                 <TableRow key={obligation.id}>
                   <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(obligation.dueDate), "MMM d")}
+                    {format(new Date(obligation.dueDate), "dd-MM")}
                   </TableCell>
                   <TableCell className="font-medium">
                     {obligation.name}

@@ -112,7 +112,7 @@ export function TransferForm({
     e.preventDefault();
     if (!validate()) return;
 
-    const data = { ...form, date: new Date(dateStr) };
+    const data = { ...form, date: new Date(`${dateStr}T00:00:00`) };
 
     if (isEditing && transfer) {
       await updateTransfer.mutateAsync({ id: transfer.id, ...data });

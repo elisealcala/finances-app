@@ -174,6 +174,10 @@ export function StatementsPageClient() {
               (statement as Record<string, unknown>).expenseCount as
                 | number
                 | undefined;
+            const totalsByCurrency =
+              (statement as Record<string, unknown>).totalsByCurrency as
+                | Record<string, number>
+                | undefined;
 
             return (
               <Card key={statement.id}>
@@ -201,14 +205,14 @@ export function StatementsPageClient() {
                       Payment due:{" "}
                       {format(new Date(statement.paymentDueDate), "dd-MM-yyyy")}
                     </p>
-                    {statement.totalAmount != null && (
-                      <p className="font-medium">
-                        Total:{" "}
-                        {formatCurrency(
-                          statement.totalAmount,
-                          (account?.currency as "PEN" | "USD" | "EUR") ?? "PEN",
-                        )}
-                      </p>
+                    {totalsByCurrency && Object.keys(totalsByCurrency).length > 0 && (
+                      <div className="font-medium">
+                        {Object.entries(totalsByCurrency).map(([currency, total]) => (
+                          <p key={currency}>
+                            Total: {formatCurrency(total, currency as "PEN" | "USD" | "EUR")}
+                          </p>
+                        ))}
+                      </div>
                     )}
                     {expenseCount != null && (
                       <p>{expenseCount} expense{expenseCount !== 1 ? "s" : ""}</p>

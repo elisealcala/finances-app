@@ -27,6 +27,7 @@ export type Account = Omit<
 /** Account with computed balance */
 export type AccountWithBalance = Account & {
   balance: number;
+  balancesByCurrency?: Record<string, number>;
 };
 
 /** Serialized Category with Decimal fields converted to number */

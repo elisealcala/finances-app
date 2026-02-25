@@ -38,15 +38,28 @@ export const statementRouter = router({
           account: {
             select: { id: true, name: true, currency: true, color: true },
           },
+          expenses: {
+            select: { amount: true, currency: true },
+          },
           _count: { select: { expenses: true } },
         },
       });
 
-      const statements = rawStatements.map((s) => ({
-        ...serializeStatement(s),
-        account: s.account,
-        expenseCount: s._count.expenses,
-      }));
+      const statements = rawStatements.map((s) => {
+        const totalsByCurrency: Record<string, number> = {};
+        for (const e of s.expenses) {
+          const cur = e.currency ?? s.account.currency;
+          totalsByCurrency[cur] = (totalsByCurrency[cur] ?? 0) + Number(e.amount);
+        }
+
+        const { expenses: _expenses, _count, ...rest } = s;
+        return {
+          ...serializeStatement(rest),
+          account: s.account,
+          expenseCount: _count.expenses,
+          totalsByCurrency,
+        };
+      });
 
       return { statements };
     }),

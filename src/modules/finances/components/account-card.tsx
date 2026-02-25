@@ -76,8 +76,19 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
-          {formatCurrency(account.balance, account.currency)}
+          {formatCurrency(
+            account.balancesByCurrency?.[account.currency] ?? account.balance,
+            account.currency,
+          )}
         </div>
+        {account.balancesByCurrency &&
+          Object.entries(account.balancesByCurrency)
+            .filter(([cur]) => cur !== account.currency)
+            .map(([cur, amt]) => (
+              <div key={cur} className="text-muted-foreground text-lg">
+                {formatCurrency(amt, cur)}
+              </div>
+            ))}
         {showAvailable && (
           <div className="text-muted-foreground text-sm">
             Available:{" "}

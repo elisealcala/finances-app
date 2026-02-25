@@ -10,7 +10,7 @@ import {
   deleteAccountSchema,
 } from "../schema";
 import { pickNextColor } from "../lib/colors";
-import { computeAccountBalance } from "../lib/balance";
+import { computeAccountBalance, computeAccountBalancesByCurrency } from "../lib/balance";
 
 function serializeAccount(account: PrismaAccount) {
   return {
@@ -45,12 +45,16 @@ export const accountRouter = router({
       const accounts = await Promise.all(
         rawAccounts.map(async (account) => {
           const serialized = serializeAccount(account);
-          const balance = await computeAccountBalance(
-            ctx.db,
-            account.id,
-            serialized.opening,
-          );
-          return { ...serialized, balance };
+          const [balance, balancesByCurrency] = await Promise.all([
+            computeAccountBalance(ctx.db, account.id, serialized.opening),
+            computeAccountBalancesByCurrency(
+              ctx.db,
+              account.id,
+              account.currency,
+              serialized.opening,
+            ),
+          ]);
+          return { ...serialized, balance, balancesByCurrency };
         }),
       );
 

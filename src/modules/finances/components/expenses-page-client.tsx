@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAccounts } from "../hooks/use-accounts";
 import { useExpenses, useDeleteExpense, useMarkExpensePaid } from "../hooks/use-expenses";
@@ -39,11 +40,17 @@ export function ExpensesPageClient() {
   const deleteExpense = useDeleteExpense();
   const markPaid = useMarkExpensePaid();
 
+  const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
-  const expenses = (data?.expenses ?? []) as Expense[];
+  const allExpenses = (data?.expenses ?? []) as Expense[];
+  const expenses = search
+    ? allExpenses.filter((e) =>
+        e.name.toLowerCase().includes(search.toLowerCase().trim())
+      )
+    : allExpenses;
   const totalsByCurrency = (data?.totalsByCurrency ?? {}) as Record<string, number>;
 
   function handleEdit(expense: Expense) {
@@ -92,6 +99,15 @@ export function ExpensesPageClient() {
           onNext={period.goToNextMonth}
           onToday={period.goToCurrentMonth}
         />
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 w-[200px]"
+          />
+        </div>
         <Select
           value={accountId ?? "all"}
           onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}

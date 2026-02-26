@@ -22,7 +22,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAccounts } from "../hooks/use-accounts";
 import { useTransfers, useDeleteTransfer } from "../hooks/use-transfers";
 import { usePeriodFilter } from "../hooks/use-period-filter";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { TransferTable } from "./transfer-table";
 import { TransferForm } from "./transfer-form";
 import type { Transfer } from "../types";
@@ -84,15 +84,7 @@ export function TransfersPageClient() {
       </div>
 
       <div className="flex items-center gap-4">
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
         <Select
           value={accountId ?? "all"}
           onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}

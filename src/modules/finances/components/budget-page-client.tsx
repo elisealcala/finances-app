@@ -2,7 +2,7 @@
 
 import { usePeriodFilter } from "../hooks/use-period-filter";
 import { useBudgetStatus } from "../hooks/use-categories";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { BudgetOverview } from "./budget-overview";
 
 export function BudgetPageClient() {
@@ -18,15 +18,7 @@ export function BudgetPageClient() {
             Track spending against category budgets.
           </p>
         </div>
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
       </div>
 
       <BudgetOverview budgets={data} isLoading={isLoading} />

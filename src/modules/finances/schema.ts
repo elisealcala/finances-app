@@ -271,12 +271,12 @@ export const monthlySummarySchema = z.object({
 
 export const periodSummarySchema = z.object({
   year: z.number().int(),
-  month: z.number().int().min(1).max(12),
+  month: z.number().int().min(1).max(12).optional(),
 });
 
 export const categorySummarySchema = z.object({
   year: z.number().int(),
-  month: z.number().int().min(1).max(12),
+  month: z.number().int().min(1).max(12).optional(),
   accountId: z.string().cuid().optional(),
 });
 

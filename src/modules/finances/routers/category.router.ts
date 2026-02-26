@@ -134,8 +134,12 @@ export const categoryRouter = router({
     .input(categorySummarySchema)
     .query(async ({ ctx, input }) => {
       const { year, month, accountId } = input;
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 1);
+      const startDate = month
+        ? new Date(year, month - 1, 1)
+        : new Date(year, 0, 1);
+      const endDate = month
+        ? new Date(year, month, 1)
+        : new Date(year + 1, 0, 1);
 
       const categories = await ctx.db.category.findMany({
         where: { isArchived: false },
@@ -178,7 +182,8 @@ export const categoryRouter = router({
           (sum, v) => sum + v,
           0,
         );
-        const budget = Number(cat.monthlyBudget ?? 0);
+        const monthlyBudget = Number(cat.monthlyBudget ?? 0);
+        const budget = month ? monthlyBudget : monthlyBudget * 12;
         return {
           categoryId: cat.id,
           categoryName: cat.name,

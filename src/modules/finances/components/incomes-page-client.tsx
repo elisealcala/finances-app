@@ -22,7 +22,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAccounts } from "../hooks/use-accounts";
 import { useIncomes, useDeleteIncome } from "../hooks/use-incomes";
 import { usePeriodFilter } from "../hooks/use-period-filter";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { IncomeTable } from "./income-table";
 import { IncomeForm } from "./income-form";
 import type { Income } from "../types";
@@ -82,15 +82,7 @@ export function IncomesPageClient() {
       </div>
 
       <div className="flex items-center gap-4">
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
         <Select
           value={accountId ?? "all"}
           onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}

@@ -2,7 +2,7 @@
 
 import { usePeriodFilter } from "../hooks/use-period-filter";
 import { usePeriodSummary, useMonthlySummary } from "../hooks/use-overview";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { FinancesSummaryCards } from "./finances-summary-cards";
 import { MonthlyOverviewChart } from "./monthly-overview-chart";
 import { CategoryBreakdownChart } from "./category-breakdown-chart";
@@ -25,15 +25,7 @@ export function FinancesPageClient() {
             Your financial summary at a glance.
           </p>
         </div>
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
       </div>
 
       <FinancesSummaryCards summary={periodData} />

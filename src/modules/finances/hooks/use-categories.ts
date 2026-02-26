@@ -60,7 +60,7 @@ export function useDeleteCategory() {
   });
 }
 
-export function useBudgetStatus(year: number, month: number) {
+export function useBudgetStatus(year: number, month: number | undefined) {
   const trpc = useTRPC();
   return useQuery(
     trpc.finances.category.budgetStatus.queryOptions({ year, month }),

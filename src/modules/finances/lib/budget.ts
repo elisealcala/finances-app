@@ -1,14 +1,18 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { BudgetStatus } from "../types";
 
-/** Compute budget vs actual spend per category for a given month */
+/** Compute budget vs actual spend per category for a given period */
 export async function computeBudgetStatus(
   db: PrismaClient,
   year: number,
-  month: number,
+  month?: number,
 ): Promise<BudgetStatus[]> {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const startDate = month
+    ? new Date(year, month - 1, 1)
+    : new Date(year, 0, 1);
+  const endDate = month
+    ? new Date(year, month, 1)
+    : new Date(year + 1, 0, 1);
 
   const categories = await db.category.findMany({
     where: {
@@ -20,7 +24,8 @@ export async function computeBudgetStatus(
   const results: BudgetStatus[] = [];
 
   for (const cat of categories) {
-    const budget = Number(cat.monthlyBudget ?? 0);
+    const monthlyBudget = Number(cat.monthlyBudget ?? 0);
+    const budget = month ? monthlyBudget : monthlyBudget * 12;
     const agg = await db.expense.aggregate({
       where: {
         categoryId: cat.id,

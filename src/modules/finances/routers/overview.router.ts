@@ -41,8 +41,12 @@ export const overviewRouter = router({
     .input(periodSummarySchema)
     .query(async ({ ctx, input }) => {
       const { year, month } = input;
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 1);
+      const startDate = month
+        ? new Date(year, month - 1, 1)
+        : new Date(year, 0, 1);
+      const endDate = month
+        ? new Date(year, month, 1)
+        : new Date(year + 1, 0, 1);
 
       const [incomeAgg, expenseAgg] = await Promise.all([
         ctx.db.income.aggregate({

@@ -34,7 +34,7 @@ import {
   useCategorySummary,
 } from "../hooks/use-categories";
 import { usePeriodFilter } from "../hooks/use-period-filter";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { CategoryForm } from "./category-form";
 import type { Category } from "../types";
 
@@ -95,15 +95,7 @@ export function CategoriesPageClient() {
       </div>
 
       <div className="flex items-center gap-4">
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
         <Select
           value={accountId ?? "all"}
           onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}
@@ -181,7 +173,7 @@ export function CategoriesPageClient() {
                         : formatCurrency(0)}
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      spent this month
+                      spent this {period.isYearMode ? "year" : "month"}
                     </p>
                     {category.monthlyBudget != null ? (
                       <div className="space-y-1">

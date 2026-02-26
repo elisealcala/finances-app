@@ -10,7 +10,7 @@ export function useMonthlySummary(year: number) {
   );
 }
 
-export function usePeriodSummary(year: number, month: number) {
+export function usePeriodSummary(year: number, month: number | undefined) {
   const trpc = useTRPC();
   return useQuery(
     trpc.finances.overview.periodSummary.queryOptions({ year, month }),

@@ -23,7 +23,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useAccounts } from "../hooks/use-accounts";
 import { useExpenses, useDeleteExpense, useMarkExpensePaid } from "../hooks/use-expenses";
 import { usePeriodFilter } from "../hooks/use-period-filter";
-import { MonthYearFilter } from "./month-year-filter";
+import { PeriodSelector } from "./period-selector";
 import { ExpenseTable } from "./expense-table";
 import { ExpenseForm } from "./expense-form";
 import type { Expense } from "../types";
@@ -90,15 +90,7 @@ export function ExpensesPageClient() {
       </div>
 
       <div className="flex items-center gap-4">
-        <MonthYearFilter
-          year={period.year}
-          month={period.month}
-          onYearChange={period.setYear}
-          onMonthChange={period.setMonth}
-          onPrev={period.goToPrevMonth}
-          onNext={period.goToNextMonth}
-          onToday={period.goToCurrentMonth}
-        />
+        <PeriodSelector {...period} />
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input

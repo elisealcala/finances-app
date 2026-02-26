@@ -18,18 +18,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { useAccounts } from "../hooks/use-accounts";
 import {
   useCategories,
   useDeleteCategory,
+  useCategorySummary,
 } from "../hooks/use-categories";
+import { usePeriodFilter } from "../hooks/use-period-filter";
+import { MonthYearFilter } from "./month-year-filter";
 import { CategoryForm } from "./category-form";
 import type { Category } from "../types";
 
 export function CategoriesPageClient() {
   const { data, isLoading } = useCategories();
   const deleteCategory = useDeleteCategory();
+
+  const period = usePeriodFilter();
+  const [accountId, setAccountId] = useState<string | undefined>();
+  const { data: accountsData } = useAccounts();
+  const { data: summaryData } = useCategorySummary({
+    year: period.year,
+    month: period.month,
+    accountId,
+  });
+
+  const summaryMap = new Map(
+    (summaryData?.items ?? []).map((item) => [item.categoryId, item]),
+  );
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -70,6 +94,34 @@ export function CategoriesPageClient() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-4">
+        <MonthYearFilter
+          year={period.year}
+          month={period.month}
+          onYearChange={period.setYear}
+          onMonthChange={period.setMonth}
+          onPrev={period.goToPrevMonth}
+          onNext={period.goToNextMonth}
+          onToday={period.goToCurrentMonth}
+        />
+        <Select
+          value={accountId ?? "all"}
+          onValueChange={(v) => setAccountId(v === "all" ? undefined : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All accounts" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All accounts</SelectItem>
+            {accountsData?.accounts?.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {isLoading ? (
         <div className="text-muted-foreground py-12 text-center">
           Loading categories...
@@ -80,54 +132,102 @@ export function CategoriesPageClient() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categories.map((category: Category) => (
-            <Card key={category.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                  {category.color && (
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                  )}
-                  {category.name}
-                </CardTitle>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEdit(category)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setDeletingCategory(category)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent>
-                {category.monthlyBudget != null ? (
-                  <div className="text-sm">
-                    <Badge variant="outline">
-                      Budget: {formatCurrency(category.monthlyBudget)}
-                    </Badge>
+          {categories.map((category: Category) => {
+            const summary = summaryMap.get(category.id);
+            const spent = summary?.spent ?? 0;
+            const spentByCurrency = (summary?.spentByCurrency ?? {}) as Record<string, number>;
+            return (
+              <Card key={category.id}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                    {category.color && (
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: category.color }}
+                      />
+                    )}
+                    {category.name}
+                  </CardTitle>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(category)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeletingCategory(category)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="text-2xl font-bold">
+                      {Object.keys(spentByCurrency).length > 0
+                        ? Object.entries(spentByCurrency)
+                            .map(([cur, amt]) =>
+                              formatCurrency(amt, cur as "PEN" | "USD" | "EUR"),
+                            )
+                            .join(" / ")
+                        : formatCurrency(0)}
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      spent this month
+                    </p>
+                    {category.monthlyBudget != null ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <Badge variant="outline">
+                            Budget: {formatCurrency(category.monthlyBudget)}
+                          </Badge>
+                          <span
+                            className={
+                              (summary?.percentUsed ?? 0) > 100
+                                ? "text-destructive font-medium"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {(summary?.percentUsed ?? 0).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="bg-secondary h-2 w-full rounded-full">
+                          <div
+                            className={cn(
+                              "h-2 rounded-full",
+                              (summary?.percentUsed ?? 0) > 100
+                                ? "bg-destructive"
+                                : (summary?.percentUsed ?? 0) > 80
+                                  ? "bg-yellow-500"
+                                  : "bg-primary",
+                            )}
+                            style={{
+                              width: `${Math.min(summary?.percentUsed ?? 0, 100)}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          {formatCurrency(summary?.remaining ?? 0)} remaining
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">
+                        No budget set
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-muted-foreground text-sm">
-                    No budget set
-                  </span>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

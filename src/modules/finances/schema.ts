@@ -274,6 +274,12 @@ export const periodSummarySchema = z.object({
   month: z.number().int().min(1).max(12),
 });
 
+export const categorySummarySchema = z.object({
+  year: z.number().int(),
+  month: z.number().int().min(1).max(12),
+  accountId: z.string().cuid().optional(),
+});
+
 // ============================================
 // Exported types
 // ============================================
@@ -285,6 +291,7 @@ export type ListAccountsInput = z.infer<typeof listAccountsSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type ListCategoriesInput = z.infer<typeof listCategoriesSchema>;
+export type CategorySummaryInput = z.infer<typeof categorySummarySchema>;
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;

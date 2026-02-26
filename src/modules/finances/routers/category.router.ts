@@ -8,6 +8,7 @@ import {
   listCategoriesSchema,
   deleteCategorySchema,
   periodSummarySchema,
+  categorySummarySchema,
 } from "../schema";
 import { pickNextColor } from "../lib/colors";
 import { computeBudgetStatus } from "../lib/budget";
@@ -127,5 +128,69 @@ export const categoryRouter = router({
     .input(periodSummarySchema)
     .query(async ({ ctx, input }) => {
       return computeBudgetStatus(ctx.db, input.year, input.month);
+    }),
+
+  summary: publicProcedure
+    .input(categorySummarySchema)
+    .query(async ({ ctx, input }) => {
+      const { year, month, accountId } = input;
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 1);
+
+      const categories = await ctx.db.category.findMany({
+        where: { isArchived: false },
+        orderBy: { name: "asc" },
+      });
+
+      const expenseWhere: Prisma.ExpenseWhereInput = {
+        date: { gte: startDate, lt: endDate },
+        ...(accountId && { accountId }),
+      };
+
+      const expenses = await ctx.db.expense.findMany({
+        where: expenseWhere,
+        select: {
+          amount: true,
+          currency: true,
+          categoryId: true,
+          account: { select: { currency: true } },
+        },
+      });
+
+      // Build per-category totals by currency
+      const spentMap = new Map<
+        string | null,
+        Record<string, number>
+      >();
+      for (const e of expenses) {
+        const currency = e.currency ?? e.account.currency ?? "PEN";
+        const key = e.categoryId;
+        const current = spentMap.get(key) ?? {};
+        current[currency] = (current[currency] ?? 0) + Number(e.amount);
+        spentMap.set(key, current);
+      }
+
+      const uncategorizedByCurrency = spentMap.get(null) ?? {};
+
+      const items = categories.map((cat) => {
+        const spentByCurrency = spentMap.get(cat.id) ?? {};
+        const totalSpent = Object.values(spentByCurrency).reduce(
+          (sum, v) => sum + v,
+          0,
+        );
+        const budget = Number(cat.monthlyBudget ?? 0);
+        return {
+          categoryId: cat.id,
+          categoryName: cat.name,
+          color: cat.color,
+          monthlyBudget: budget > 0 ? budget : null,
+          spent: totalSpent,
+          spentByCurrency,
+          remaining: budget > 0 ? budget - totalSpent : null,
+          percentUsed: budget > 0 ? (totalSpent / budget) * 100 : null,
+        };
+      });
+
+      return { items, uncategorizedByCurrency };
     }),
 });

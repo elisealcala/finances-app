@@ -86,7 +86,7 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
             .filter(([cur]) => cur !== account.currency)
             .map(([cur, amt]) => (
               <div key={cur} className="text-muted-foreground text-lg">
-                {formatCurrency(amt, cur)}
+                {formatCurrency(amt, cur as "PEN" | "USD" | "EUR")}
               </div>
             ))}
         {showAvailable && (

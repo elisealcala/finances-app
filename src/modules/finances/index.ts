@@ -20,6 +20,7 @@ export {
   useUpdateCategory,
   useDeleteCategory,
   useBudgetStatus,
+  useCategorySummary,
 } from "./hooks/use-categories";
 export {
   useExpenses,

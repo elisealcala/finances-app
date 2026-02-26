@@ -2,7 +2,7 @@
 
 import { useTRPC } from "@/server/trpc/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ListCategoriesInput } from "../schema";
+import type { ListCategoriesInput, CategorySummaryInput } from "../schema";
 
 export function useCategories(input?: ListCategoriesInput) {
   const trpc = useTRPC();
@@ -19,6 +19,9 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.list.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.summary.queryKey(),
+      });
     },
   });
 }
@@ -32,6 +35,9 @@ export function useUpdateCategory() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.summary.queryKey(),
       });
     },
   });
@@ -47,6 +53,9 @@ export function useDeleteCategory() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.list.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.summary.queryKey(),
+      });
     },
   });
 }
@@ -55,5 +64,12 @@ export function useBudgetStatus(year: number, month: number) {
   const trpc = useTRPC();
   return useQuery(
     trpc.finances.category.budgetStatus.queryOptions({ year, month }),
+  );
+}
+
+export function useCategorySummary(input: CategorySummaryInput) {
+  const trpc = useTRPC();
+  return useQuery(
+    trpc.finances.category.summary.queryOptions(input),
   );
 }

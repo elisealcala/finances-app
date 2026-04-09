@@ -23,6 +23,7 @@ export async function projectCashFlow(
       db,
       account.id,
       Number(account.opening),
+      account.type,
     );
     balances.set(account.id, balance);
   }

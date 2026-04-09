@@ -36,6 +36,7 @@ export const projectionRouter = router({
         ctx.db,
         account.id,
         Number(account.opening),
+        account.type,
       );
 
       const result = await computeAvailableBalance(

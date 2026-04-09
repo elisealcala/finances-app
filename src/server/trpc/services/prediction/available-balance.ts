@@ -150,6 +150,7 @@ export async function computeAllAvailableBalances(
       db,
       account.id,
       Number(account.opening),
+      account.type,
     );
 
     if (account.type === "CREDIT_CARD" && account.creditLimit) {

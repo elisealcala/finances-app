@@ -143,23 +143,36 @@ export function CapitalPaymentDialog({
   async function handleSubmit() {
     if (!validate()) return;
 
-    await mutation.mutateAsync({
-      debtId: debt.id,
-      amount,
-      date: new Date(date),
-      notes: notes || null,
-      mode: "custom",
-      customInstallments: installments.map((inst) => ({
-        installmentNumber: inst.installmentNumber,
-        dueDate: inst.dueDate,
-        capital: inst.capital,
-        interest: inst.interest,
-        fees:
-          inst.fees.filter((f) => f.amount > 0).length > 0
-            ? inst.fees.filter((f) => f.amount > 0)
-            : undefined,
-      })),
-    });
+    const payload =
+      newBalance <= 0
+        ? {
+            debtId: debt.id,
+            amount,
+            date: new Date(date),
+            notes: notes || null,
+            mode: "auto" as const,
+            termOption: "reduce_term" as const,
+            newTermMonths: 1,
+          }
+        : {
+            debtId: debt.id,
+            amount,
+            date: new Date(date),
+            notes: notes || null,
+            mode: "custom" as const,
+            customInstallments: installments.map((inst) => ({
+              installmentNumber: inst.installmentNumber,
+              dueDate: inst.dueDate,
+              capital: inst.capital,
+              interest: inst.interest,
+              fees:
+                inst.fees.filter((f) => f.amount > 0).length > 0
+                  ? inst.fees.filter((f) => f.amount > 0)
+                  : undefined,
+            })),
+          };
+
+    await mutation.mutateAsync(payload);
 
     // Reset and close
     setAmount(0);

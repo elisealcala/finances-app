@@ -53,16 +53,24 @@ const TIME_PERIOD_LABELS: Record<TimePeriod, string> = {
   next_24m: "Next 24 Months",
 };
 
+type AggregatedPayment = {
+  monthLabel: string;
+  totalAmount: number;
+  payments: Array<{ debtName: string; amount: number }>;
+};
+
 function DebtTimelineTooltip({
   active,
   payload,
   label,
   debts,
+  paymentsByMonth,
 }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
   label?: string;
   debts: Debt[];
+  paymentsByMonth: Map<string, AggregatedPayment>;
 }) {
   if (!active || !payload?.length) return null;
 
@@ -70,10 +78,26 @@ function DebtTimelineTooltip({
   const total = payload
     .filter((item) => item.name !== "simulation")
     .reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  const monthPayment = label ? paymentsByMonth.get(label) : undefined;
 
   return (
     <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
       <div className="mb-2 font-medium">{label}</div>
+      {monthPayment && (
+        <div className="border-border mb-2 border-b pb-2">
+          <div className="text-primary mb-1 flex items-center gap-1 font-medium">
+            <span>Capital Payment</span>
+          </div>
+          {monthPayment.payments.map((p, i) => (
+            <div key={i} className="flex justify-between gap-4">
+              <span className="text-muted-foreground">{p.debtName}</span>
+              <span className="text-primary font-mono font-medium tabular-nums">
+                -{formatCurrency(p.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="grid gap-1.5">
         {payload
           .filter((item) => item.name !== "simulation")
@@ -200,14 +224,23 @@ export function DebtTimelineChart({
     });
   }, [mergedData, timePeriod]);
 
-  // Deduplicate payment markers by monthLabel (multiple payments in same month)
-  const uniquePaymentMonths = useMemo(() => {
-    const seen = new Set<string>();
-    return paymentMarkers.filter((m) => {
-      if (seen.has(m.monthLabel)) return false;
-      seen.add(m.monthLabel);
-      return true;
-    });
+  // Aggregate payment markers by month (sum amounts, collect per-debt details)
+  const aggregatedPayments = useMemo(() => {
+    const map = new Map<string, AggregatedPayment>();
+    for (const m of paymentMarkers) {
+      const existing = map.get(m.monthLabel);
+      if (existing) {
+        existing.totalAmount += m.amount;
+        existing.payments.push({ debtName: m.debtName, amount: m.amount });
+      } else {
+        map.set(m.monthLabel, {
+          monthLabel: m.monthLabel,
+          totalAmount: m.amount,
+          payments: [{ debtName: m.debtName, amount: m.amount }],
+        });
+      }
+    }
+    return map;
   }, [paymentMarkers]);
 
   if (debts.length === 0 || timelineData.length === 0) {
@@ -268,7 +301,7 @@ export function DebtTimelineChart({
               }
             />
             <ChartTooltip
-              content={<DebtTimelineTooltip debts={debts} />}
+              content={<DebtTimelineTooltip debts={debts} paymentsByMonth={aggregatedPayments} />}
             />
             <ChartLegend content={<ChartLegendContent key="debt-legend" />} />
             <ReferenceLine
@@ -278,15 +311,15 @@ export function DebtTimelineChart({
               label={{ value: "Today", position: "insideTopRight", fontSize: 11 }}
             />
             {/* Capital payment markers */}
-            {uniquePaymentMonths.map((marker) => (
+            {Array.from(aggregatedPayments.values()).map((marker) => (
               <ReferenceLine
                 key={`payment-${marker.monthLabel}`}
                 x={marker.monthLabel}
                 stroke="hsl(var(--primary))"
-                strokeDasharray="2 4"
-                strokeOpacity={0.5}
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
                 label={{
-                  value: `${formatCurrency(marker.amount)}`,
+                  value: `-${formatCurrency(marker.totalAmount)}`,
                   position: "insideTopLeft",
                   fontSize: 10,
                   fill: "hsl(var(--primary))",

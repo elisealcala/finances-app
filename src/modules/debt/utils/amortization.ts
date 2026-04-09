@@ -219,8 +219,7 @@ export function generateTimeline(
     }),
   );
 
-  if (!isFinite(maxTotalMonths) || maxTotalMonths <= 0)
-    return { rows: [], paymentMarkers };
+  if (maxTotalMonths <= 0) return { rows: [], paymentMarkers };
 
   const capped = Math.min(maxTotalMonths, 240); // cap at 20 years
   const rows: TimelineRow[] = [];

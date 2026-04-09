@@ -1,5 +1,5 @@
 import { getQueryClient, trpc, HydrateClient } from "@/server/trpc/server";
-import { DashboardOverview } from "./dashboard-overview";
+import { DashboardOverview } from "./components/dashboard-overview";
 
 export const dynamic = "force-dynamic";
 

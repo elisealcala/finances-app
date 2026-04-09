@@ -250,29 +250,12 @@ export const statementRouter = router({
         });
       }
 
-      // Build exchange rate lookup
-      const rateMap = new Map<string, number>();
-      for (const er of input.exchangeRates) {
-        rateMap.set(`${er.fromCurrency}->${er.toCurrency}`, er.rate);
-      }
-
-      function getRate(from: Currency, to: Currency): number {
-        if (from === to) return 1;
-        const rate = rateMap.get(`${from}->${to}`);
-        if (rate === undefined) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `Missing exchange rate for ${from} -> ${to}. Please provide this rate.`,
-          });
-        }
-        return rate;
-      }
-
-      // Group expenses by paying account and compute converted totals
+      // Group expenses by (paying account, expense currency) and sum raw amounts
       type GroupData = {
         payingAccountId: string;
         payingAccountName: string;
-        totalInPayerCurrency: Prisma.Decimal;
+        currency: Currency;
+        total: Prisma.Decimal;
         expenseCount: number;
       };
 
@@ -280,22 +263,19 @@ export const statementRouter = router({
 
       for (const expense of expenses) {
         const payerId = expense.payingAccountId!;
-        const payerCurrency = expense.payingAccount!.currency;
         const expenseCurrency = expense.currency ?? expense.account.currency;
+        const groupKey = `${payerId}::${expenseCurrency}`;
 
-        const rate = getRate(expenseCurrency, payerCurrency);
-        const convertedAmount = expense.amount.mul(new Prisma.Decimal(rate));
-
-        const existing = groups.get(payerId);
+        const existing = groups.get(groupKey);
         if (existing) {
-          existing.totalInPayerCurrency =
-            existing.totalInPayerCurrency.add(convertedAmount);
+          existing.total = existing.total.add(expense.amount);
           existing.expenseCount += 1;
         } else {
-          groups.set(payerId, {
+          groups.set(groupKey, {
             payingAccountId: payerId,
             payingAccountName: expense.payingAccount!.name,
-            totalInPayerCurrency: convertedAmount,
+            currency: expenseCurrency,
+            total: expense.amount,
             expenseCount: 1,
           });
         }
@@ -314,12 +294,13 @@ export const statementRouter = router({
           data: { paymentStatus: "PAID" },
         });
 
-        // Create one transfer per paying account group
+        // Create one transfer per (paying account, currency) group
         for (const [, group] of groups) {
           await tx.transfer.create({
             data: {
               name: `Statement Payment: ${cardName} ${statement.month}/${statement.year}`,
-              amount: group.totalInPayerCurrency,
+              amount: group.total,
+              currency: group.currency,
               date: input.paymentDate,
               fromAccountId: group.payingAccountId,
               toAccountId: creditCardAccountId,

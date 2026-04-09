@@ -1,5 +1,5 @@
 import { getQueryClient, trpc, HydrateClient } from "@/server/trpc/server";
-import { IncomesPageClient } from "@/modules/finances/components/incomes-page-client";
+import { IncomesPageClient } from "./components/incomes-page-client";
 
 export const dynamic = "force-dynamic";
 

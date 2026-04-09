@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { computeAccountBalance } from "@/modules/finances/lib/balance";
+import { computeAccountBalance, computeAccountBalancesByCurrency } from "@/modules/finances/lib/balance";
 import type { AvailableBalance, Obligation } from "../types";
 import { getOccurrencesInRange } from "./upcoming";
 
@@ -151,6 +151,31 @@ export async function computeAllAvailableBalances(
       account.id,
       Number(account.opening),
     );
+
+    if (account.type === "CREDIT_CARD" && account.creditLimit) {
+      // For credit cards, available = remaining credit line using primary currency balance only
+      const balancesByCurrency = await computeAccountBalancesByCurrency(
+        db,
+        account.id,
+        account.currency,
+        Number(account.opening),
+        account.type,
+      );
+      const primaryBalance = balancesByCurrency[account.currency] ?? balance;
+      const limit = Number(account.creditLimit);
+      const available = Math.round((limit - Math.abs(primaryBalance)) * 100) / 100;
+      results.push({
+        accountId: account.id,
+        accountName: account.name,
+        currency: account.currency,
+        balance,
+        available,
+        committed: 0,
+        obligations: [],
+      });
+      continue;
+    }
+
     const { available, committed, obligations } = await computeAvailableBalance(
       db,
       account.id,

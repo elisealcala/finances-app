@@ -40,9 +40,12 @@ export function useUpdateStatement() {
 
   return useMutation({
     ...trpc.finances.statement.update.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.statement.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.getById.queryKey({ id: variables.id }),
       });
     },
   });
@@ -54,12 +57,18 @@ export function useCloseStatement() {
 
   return useMutation({
     ...trpc.finances.statement.close.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.statement.list.queryKey(),
       });
       queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.getById.queryKey({ id: variables.id }),
+      });
+      queryClient.invalidateQueries({
         queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
       });
     },
   });
@@ -71,9 +80,12 @@ export function usePayStatement() {
 
   return useMutation({
     ...trpc.finances.statement.pay.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.statement.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.getById.queryKey({ id: variables.id }),
       });
       queryClient.invalidateQueries({
         queryKey: trpc.finances.expense.list.queryKey(),
@@ -100,6 +112,9 @@ export function useDeleteStatement() {
       });
       queryClient.invalidateQueries({
         queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
       });
     },
   });

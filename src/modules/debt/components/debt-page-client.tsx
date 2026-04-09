@@ -86,7 +86,7 @@ export function DebtPageClient() {
       <DebtSummaryCards summary={visibleSummary} />
 
       <DebtTimelineChart
-        debts={activeVisibleDebts}
+        debts={visibleDebts}
         simulation={simulation.result}
         simulatedDebtName={simulation.selectedDebt?.name}
       />

@@ -1,7 +1,7 @@
 import { router } from "./init";
-import { debtRouter } from "@/modules/debt/router";
-import { financesRouter } from "@/modules/finances/router";
-import { predictionRouter } from "@/modules/prediction/router";
+import { debtRouter } from "./routers/debt.router";
+import { financesRouter } from "./routers/finances.router";
+import { predictionRouter } from "./routers/prediction.router";
 
 export const appRouter = router({
   debt: debtRouter,

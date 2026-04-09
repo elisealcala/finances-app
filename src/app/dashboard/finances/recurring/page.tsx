@@ -1,5 +1,5 @@
 import { getQueryClient, trpc, HydrateClient } from "@/server/trpc/server";
-import { RecurringPageClient } from "@/modules/prediction/components/recurring-page-client";
+import { RecurringPageClient } from "./components/recurring-page-client";
 
 export const dynamic = "force-dynamic";
 

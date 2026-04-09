@@ -46,12 +46,13 @@ export const accountRouter = router({
         rawAccounts.map(async (account) => {
           const serialized = serializeAccount(account);
           const [balance, balancesByCurrency] = await Promise.all([
-            computeAccountBalance(ctx.db, account.id, serialized.opening),
+            computeAccountBalance(ctx.db, account.id, serialized.opening, account.type),
             computeAccountBalancesByCurrency(
               ctx.db,
               account.id,
               account.currency,
               serialized.opening,
+              account.type,
             ),
           ]);
           return { ...serialized, balance, balancesByCurrency };
@@ -80,6 +81,7 @@ export const accountRouter = router({
         ctx.db,
         account.id,
         serialized.opening,
+        account.type,
       );
       return { ...serialized, balance };
     }),
@@ -185,6 +187,7 @@ export const accountRouter = router({
           ctx.db,
           account.id,
           serialized.opening,
+          account.type,
         );
         return { ...serialized, balance };
       } catch (error) {

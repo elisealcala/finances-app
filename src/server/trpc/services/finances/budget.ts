@@ -16,7 +16,6 @@ export async function computeBudgetStatus(
 
   const categories = await db.category.findMany({
     where: {
-      isArchived: false,
       monthlyBudget: { not: null },
     },
   });
@@ -26,23 +25,35 @@ export async function computeBudgetStatus(
   for (const cat of categories) {
     const monthlyBudget = Number(cat.monthlyBudget ?? 0);
     const budget = month ? monthlyBudget : monthlyBudget * 12;
-    const agg = await db.expense.aggregate({
+    const expenseAgg = await db.expense.aggregate({
       where: {
         categoryId: cat.id,
         date: { gte: startDate, lt: endDate },
       },
       _sum: { amount: true },
     });
-    const spent = Number(agg._sum.amount ?? 0);
+    const incomeAgg = await db.income.aggregate({
+      where: {
+        categoryId: cat.id,
+        date: { gte: startDate, lt: endDate },
+      },
+      _sum: { amount: true },
+    });
+    const grossSpent = Number(expenseAgg._sum.amount ?? 0);
+    const categoryIncome = Number(incomeAgg._sum.amount ?? 0);
+    const spent = Math.max(grossSpent - categoryIncome, 0);
 
     results.push({
       categoryId: cat.id,
       categoryName: cat.name,
       color: cat.color,
       budget,
+      grossSpent: grossSpent,
+      categoryIncome: categoryIncome,
       spent,
       remaining: budget - spent,
       percentUsed: budget > 0 ? (spent / budget) * 100 : 0,
+      isArchived: cat.isArchived,
     });
   }
 

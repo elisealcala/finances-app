@@ -285,6 +285,7 @@ export function generateTimeline(
 
       const bal = Math.max(Math.round(running.balance * 100) / 100, 0);
       row[info.debt.id] = bal;
+      row[`${info.debt.id}_monthly`] = bal > 0 ? Math.round((running.activePayment + info.feeTotal) * 100) / 100 : 0;
       row.total += bal;
     }
 

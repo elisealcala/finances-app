@@ -50,15 +50,30 @@ export function getExpenseColumns({
     },
     {
       accessorKey: "amount",
-      header: "Amount",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Amount
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => {
         const expense = row.original;
         const currency = expense.currency ?? expense.account?.currency ?? "PEN";
-        return formatCurrency(Number(row.getValue("amount")), currency);
+        return (
+          <span className="font-mono tabular-nums">
+            {formatCurrency(Number(row.getValue("amount")), currency)}
+          </span>
+        );
       },
     },
     {
       id: "account",
+      accessorFn: (row) => row.account?.name ?? "",
       header: "Account",
       cell: ({ row }) => {
         const account = row.original.account;
@@ -76,9 +91,11 @@ export function getExpenseColumns({
           "—"
         );
       },
+      meta: { filterType: "select" },
     },
     {
       id: "category",
+      accessorFn: (row) => row.category?.name ?? "",
       header: "Category",
       cell: ({ row }) => {
         const category = row.original.category;
@@ -88,6 +105,7 @@ export function getExpenseColumns({
           <span className="text-muted-foreground">—</span>
         );
       },
+      meta: { filterType: "select" },
     },
     {
       accessorKey: "paymentStatus",
@@ -118,6 +136,7 @@ export function getExpenseColumns({
           </div>
         );
       },
+      meta: { filterType: "select" },
     },
     {
       id: "actions",
@@ -147,6 +166,7 @@ export function getExpenseColumns({
           </DropdownMenu>
         );
       },
+      meta: { filterable: false },
     },
   ];
 }

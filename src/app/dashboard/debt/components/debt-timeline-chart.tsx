@@ -43,11 +43,12 @@ const FALLBACK_COLORS = [
   "hsl(var(--chart-5))",
 ];
 
-type TimePeriod = "all" | "this_year" | "next_6m" | "next_12m" | "next_24m";
+type TimePeriod = "all" | "this_year" | "next_3m" | "next_6m" | "next_12m" | "next_24m";
 
 const TIME_PERIOD_LABELS: Record<TimePeriod, string> = {
   all: "All Time",
   this_year: "This Year",
+  next_3m: "Next 3 Months",
   next_6m: "Next 6 Months",
   next_12m: "Next 12 Months",
   next_24m: "Next 24 Months",
@@ -67,7 +68,7 @@ function DebtTimelineTooltip({
   paymentsByMonth,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
+  payload?: Array<{ name: string; value: number; color: string; payload?: Record<string, number | string> }>;
   label?: string;
   debts: Debt[];
   paymentsByMonth: Map<string, AggregatedPayment>;
@@ -80,58 +81,92 @@ function DebtTimelineTooltip({
     .reduce((sum, item) => sum + (Number(item.value) || 0), 0);
   const monthPayment = label ? paymentsByMonth.get(label) : undefined;
 
+  const items = payload.filter((item) => item.name !== "simulation");
+  const row = items[0]?.payload;
+  const totalMonthly = items.reduce((sum, item) => {
+    const monthlyFromRow = row ? Number(row[`${item.name}_monthly`]) || 0 : 0;
+    return sum + monthlyFromRow;
+  }, 0);
+
   return (
-    <div className="border-border/50 bg-background rounded-lg border px-3 py-2 text-xs shadow-xl">
-      <div className="mb-2 font-medium">{label}</div>
+    <div className="border-border/50 bg-background rounded-lg border px-4 py-3 text-sm shadow-xl">
+      <div className="mb-3 text-base font-semibold">{label}</div>
       {monthPayment && (
-        <div className="border-border mb-2 border-b pb-2">
-          <div className="text-primary mb-1 flex items-center gap-1 font-medium">
-            <span>Capital Payment</span>
-          </div>
+        <div className="border-border mb-3 border-b pb-3">
+          <div className="text-primary mb-2 font-semibold">Capital Payment</div>
           {monthPayment.payments.map((p, i) => (
-            <div key={i} className="flex justify-between gap-4">
+            <div key={i} className="flex justify-between gap-6">
               <span className="text-muted-foreground">{p.debtName}</span>
-              <span className="text-primary font-mono font-medium tabular-nums">
+              <span className="text-primary font-mono font-semibold tabular-nums">
                 -{formatCurrency(p.amount)}
               </span>
             </div>
           ))}
         </div>
       )}
-      <div className="grid gap-1.5">
-        {payload
-          .filter((item) => item.name !== "simulation")
-          .map((item, index) => {
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="text-muted-foreground text-xs">
+            <th className="pb-2 pr-6 text-left font-medium">Name</th>
+            <th className="pb-2 pl-4 text-right font-medium">Due</th>
+            <th className="pb-2 pl-4 text-right font-medium">Monthly</th>
+            <th className="pb-2 pl-4 text-right font-medium">Balance</th>
+            <th className="pb-2 pl-4 text-right font-medium">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => {
             const debt = debtMap.get(item.name);
             return (
-              <div key={index} className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                  style={{ backgroundColor: item.color }}
-                />
-                <div className="flex flex-1 items-baseline justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-foreground font-medium">
-                      {debt?.name ?? item.name}
-                    </span>
-                    {debt?.lender && (
-                      <span className="text-muted-foreground text-[10px]">
-                        {debt.lender}
+              <tr key={index} className="border-border/30 border-b last:border-0">
+                <td className="py-1.5 pr-4">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-3 w-3 shrink-0 rounded-[3px]"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-foreground font-medium">
+                        {debt?.name ?? item.name}
                       </span>
-                    )}
+                      {debt?.lender && (
+                        <span className="text-muted-foreground text-xs">
+                          {debt.lender}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-foreground font-mono font-medium tabular-nums">
-                    {formatCurrency(Number(item.value))}
-                  </span>
-                </div>
-              </div>
+                </td>
+                <td className="py-1.5 pl-4 text-right font-mono font-medium tabular-nums">
+                  {debt?.dueDate ? `${debt.dueDate}` : "—"}
+                </td>
+                <td className="py-1.5 pl-4 text-right font-mono font-medium tabular-nums">
+                  {row ? formatCurrency(Number(row[`${item.name}_monthly`]) || 0) : "—"}
+                </td>
+                <td className="py-1.5 pl-4 text-right font-mono font-medium tabular-nums">
+                  {formatCurrency(Number(item.value))}
+                </td>
+                <td className="py-1.5 pl-4 text-right font-mono font-medium tabular-nums">
+                  {debt ? `${debt.interestRate.toFixed(2)}%` : "—"}
+                </td>
+              </tr>
             );
           })}
-      </div>
-      <div className="border-border mt-2 flex justify-between border-t pt-2 font-medium">
-        <span>Total</span>
-        <span className="font-mono tabular-nums">{formatCurrency(total)}</span>
-      </div>
+        </tbody>
+        <tfoot>
+          <tr className="border-border border-t text-base font-semibold">
+            <td className="pt-2">Total</td>
+            <td className="pt-2 pl-4"></td>
+            <td className="pt-2 pl-4 text-right font-mono font-semibold tabular-nums">
+              {formatCurrency(totalMonthly)}
+            </td>
+            <td className="pt-2 pl-4 text-right font-mono font-semibold tabular-nums">
+              {formatCurrency(total)}
+            </td>
+            <td className="pt-2 pl-4"></td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }
@@ -147,14 +182,12 @@ export function DebtTimelineChart({
   simulation,
   simulatedDebtName,
 }: DebtTimelineChartProps) {
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("next_3m");
 
   const { rows: timelineData, paymentMarkers } = useMemo(
     () => generateTimeline(debts),
     [debts],
   );
-
-  const todayLabel = format(new Date(), "MMM yyyy");
 
   const chartConfig = useMemo(() => {
     const config: ChartConfig = {};
@@ -188,40 +221,41 @@ export function DebtTimelineChart({
     }));
   }, [timelineData, simulation]);
 
-  // Filter by time period
+  // Filter by time period — always start from the current month
   const filteredData = useMemo(() => {
-    const data = mergedData;
-    if (timePeriod === "all") return data;
-
     const now = new Date();
-    let startFilter: Date;
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Base: only show current month and forward
+    const fromNow = mergedData.filter(
+      (row) => new Date(row.date) >= currentMonthStart,
+    );
+
+    if (timePeriod === "all") return fromNow;
+
     let endFilter: Date;
 
     switch (timePeriod) {
       case "this_year":
-        startFilter = new Date(now.getFullYear(), 0, 1);
         endFilter = new Date(now.getFullYear(), 11, 31);
         break;
+      case "next_3m":
+        endFilter = addMonths(now, 3);
+        break;
       case "next_6m":
-        startFilter = now;
         endFilter = addMonths(now, 6);
         break;
       case "next_12m":
-        startFilter = now;
         endFilter = addMonths(now, 12);
         break;
       case "next_24m":
-        startFilter = now;
         endFilter = addMonths(now, 24);
         break;
       default:
-        return data;
+        return fromNow;
     }
 
-    return data.filter((row) => {
-      const rowDate = new Date(row.date);
-      return rowDate >= startFilter && rowDate <= endFilter;
-    });
+    return fromNow.filter((row) => new Date(row.date) <= endFilter);
   }, [mergedData, timePeriod]);
 
   // Aggregate payment markers by month (sum amounts, collect per-debt details)
@@ -242,6 +276,38 @@ export function DebtTimelineChart({
     }
     return map;
   }, [paymentMarkers]);
+
+  // Find payoff month for each debt from full timeline data
+  const payoffMarkers = useMemo(() => {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const futureRows = mergedData.filter(
+      (row) => new Date(row.date as string) >= currentMonthStart,
+    );
+
+    const markers: Array<{ monthLabel: string; debtName: string; color: string; inView: boolean }> = [];
+    const filteredLabels = new Set(filteredData.map((r) => r.monthLabel));
+
+    for (let i = 0; i < debts.length; i++) {
+      const debt = debts[i];
+      if (debt.status === "PAID_OFF") continue;
+      const color = debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+      for (const row of futureRows) {
+        const bal = Number((row as Record<string, unknown>)[debt.id]) || 0;
+        if (bal <= 0) {
+          const label = row.monthLabel as string;
+          markers.push({
+            monthLabel: label,
+            debtName: debt.name,
+            color,
+            inView: filteredLabels.has(label),
+          });
+          break;
+        }
+      }
+    }
+    return markers;
+  }, [debts, mergedData, filteredData]);
 
   if (debts.length === 0 || timelineData.length === 0) {
     return (
@@ -282,7 +348,7 @@ export function DebtTimelineChart({
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
+        <ChartContainer config={chartConfig} className="aspect-auto h-[600px] w-full">
           <AreaChart data={filteredData} margin={{ left: 12, right: 12 }}>
             <CartesianGrid vertical={false} />
             <XAxis
@@ -290,25 +356,34 @@ export function DebtTimelineChart({
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              interval="preserveStartEnd"
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              tickCount={12}
               tickFormatter={(v: number) =>
-                v >= 1000 ? `S/.${Math.round(v / 1000)}k` : `S/.${v}`
+                v >= 1000
+                  ? `S/.${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(v / 1000)}k`
+                  : `S/.${v}`
               }
             />
             <ChartTooltip
               content={<DebtTimelineTooltip debts={debts} paymentsByMonth={aggregatedPayments} />}
             />
-            <ChartLegend content={<ChartLegendContent key="debt-legend" />} />
-            <ReferenceLine
-              x={todayLabel}
-              stroke="hsl(var(--muted-foreground))"
-              strokeDasharray="3 3"
-              label={{ value: "Today", position: "insideTopRight", fontSize: 11 }}
+            <ChartLegend
+              content={
+                <ChartLegendContent
+                  key="debt-legend"
+                  nameKey="id"
+                  payload={debts.map((debt, i) => ({
+                    value: `${debt.name}${debt.lender ? ` · ${debt.lender}` : ""} — ${formatCurrency(debt.balance)}`,
+                    type: "rect" as const,
+                    color: debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+                    id: debt.id,
+                  }))}
+                />
+              }
             />
             {/* Capital payment markers */}
             {Array.from(aggregatedPayments.values()).map((marker) => (
@@ -326,6 +401,25 @@ export function DebtTimelineChart({
                 }}
               />
             ))}
+            {/* Payoff date markers */}
+            {payoffMarkers
+              .filter((m) => m.inView)
+              .map((marker, idx) => (
+                <ReferenceLine
+                  key={`payoff-${marker.debtName}-${idx}`}
+                  x={marker.monthLabel}
+                  stroke={marker.color}
+                  strokeDasharray="6 4"
+                  strokeWidth={2}
+                  label={{
+                    value: `${marker.debtName} paid off`,
+                    position: "insideBottomRight",
+                    fontSize: 11,
+                    fill: marker.color,
+                    fontWeight: 600,
+                  }}
+                />
+              ))}
             {debts.map((debt, i) => {
               const color =
                 debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
@@ -355,6 +449,27 @@ export function DebtTimelineChart({
             )}
           </AreaChart>
         </ChartContainer>
+        {payoffMarkers.length > 0 && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {payoffMarkers.map((marker, idx) => (
+              <div
+                key={`${marker.debtName}-${idx}`}
+                className="flex items-center gap-3 rounded-md border px-3 py-2"
+              >
+                <div
+                  className="h-3 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: marker.color }}
+                />
+                <div className="flex flex-col text-sm">
+                  <span className="font-medium">{marker.debtName}</span>
+                  <span className="text-muted-foreground text-xs">
+                    Paid off {marker.monthLabel}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

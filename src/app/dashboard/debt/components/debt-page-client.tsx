@@ -29,10 +29,10 @@ export function DebtPageClient() {
 
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
-  const allDebts = data?.debts ?? [];
+  const allDebts = (data?.debts ?? []).filter((d) => d.type !== "CREDIT_CARD");
 
   const { toggleVisibility, filterVisible, isHidden, showAll, hiddenCount } =
-    useDebtVisibility();
+    useDebtVisibility(allDebts);
 
   const simulation = useDebtSimulation(allDebts);
 

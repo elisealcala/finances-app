@@ -10,10 +10,16 @@ import {
   markExpensePaidSchema,
 } from "@/server/trpc/schemas/finances.schema";
 
-function serializeExpense(expense: PrismaExpense & { account?: unknown; category?: unknown }) {
+function serializeExpense(expense: PrismaExpense & { account?: Record<string, unknown>; category?: Record<string, unknown> | null }) {
   return {
     ...expense,
     amount: Number(expense.amount),
+    ...(expense.category && {
+      category: {
+        ...expense.category,
+        monthlyBudget: expense.category.monthlyBudget != null ? Number(expense.category.monthlyBudget) : null,
+      },
+    }),
   };
 }
 
@@ -52,7 +58,7 @@ export const expenseRouter = router({
         orderBy: { [sortBy]: sortOrder },
         include: {
           account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-          category: { select: { id: true, name: true, color: true, icon: true } },
+          category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
           payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
         },
       });
@@ -123,7 +129,7 @@ export const expenseRouter = router({
         },
         include: {
           account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-          category: { select: { id: true, name: true, color: true, icon: true } },
+          category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
           payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
         },
       });
@@ -167,7 +173,7 @@ export const expenseRouter = router({
           data: updateData,
           include: {
             account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-            category: { select: { id: true, name: true, color: true, icon: true } },
+            category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
             payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
           },
         });
@@ -226,7 +232,7 @@ export const expenseRouter = router({
         data: { paymentStatus: "PAID" },
         include: {
           account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-          category: { select: { id: true, name: true, color: true, icon: true } },
+          category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
           payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
         },
       });

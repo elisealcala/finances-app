@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,67 +17,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Plus,
-  Lock,
-  Trash2,
-  FileText,
-  CreditCard,
-  Banknote,
-} from "lucide-react";
-import { format } from "date-fns";
-import { formatCurrency } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Plus } from "lucide-react";
 import {
   useStatements,
   useDeleteStatement,
   useCloseStatement,
 } from "@/hooks/use-statements";
-import { useAccounts } from "@/hooks/use-accounts";
+import { DataTable } from "@/components/data-table";
+import { getStatementColumns } from "./statement-columns";
 import { StatementForm } from "./statement-form";
 import { PayStatementDialog } from "./pay-statement-dialog";
-import type { Account, CreditCardStatement } from "@/types/finances";
+import type { CreditCardStatement } from "@/types/finances";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  OPEN: "outline",
-  CLOSED: "secondary",
-  PAID: "default",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  OPEN: "Open",
-  CLOSED: "Closed",
-  PAID: "Paid",
+type StatementRow = CreditCardStatement & {
+  account?: { name: string; currency: string; color: string | null };
+  expenseCount?: number;
+  totalsByCurrency?: Record<string, number>;
 };
 
 export function StatementsPageClient() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showPaid, setShowPaid] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingStatement, setEditingStatement] =
-    useState<CreditCardStatement | null>(null);
+    useState<StatementRow | null>(null);
   const [deletingStatement, setDeletingStatement] =
-    useState<CreditCardStatement | null>(null);
+    useState<StatementRow | null>(null);
   const [closingStatement, setClosingStatement] =
-    useState<CreditCardStatement | null>(null);
+    useState<StatementRow | null>(null);
   const [payingStatement, setPayingStatement] =
-    useState<CreditCardStatement | null>(null);
-
-  const { data: accountsData } = useAccounts({ isArchived: false });
-  const accounts = (accountsData?.accounts ?? []) as Account[];
-  const creditCards = accounts.filter((a) => a.type === "CREDIT_CARD");
+    useState<StatementRow | null>(null);
 
   const { data: statementsData, isLoading } = useStatements({
-    accountId: selectedAccountId === "all" ? undefined : selectedAccountId,
     year: selectedYear,
   });
   const deleteStatement = useDeleteStatement();
   const closeStatement = useCloseStatement();
 
-  const statements = statementsData?.statements ?? [];
+  const allStatements = useMemo(
+    () => (statementsData?.statements ?? []) as StatementRow[],
+    [statementsData],
+  );
 
-  function handleEdit(statement: CreditCardStatement) {
+  const visibleStatements = useMemo(
+    () => (showPaid ? allStatements : allStatements.filter((s) => s.status !== "PAID")),
+    [allStatements, showPaid],
+  );
+
+  function handleEdit(statement: StatementRow) {
     setEditingStatement(statement);
     setFormOpen(true);
   }
@@ -99,8 +88,22 @@ export function StatementsPageClient() {
     setClosingStatement(null);
   }
 
+  const columns = useMemo(
+    () =>
+      getStatementColumns({
+        onEdit: handleEdit,
+        onClose: setClosingStatement,
+        onPay: setPayingStatement,
+        onDelete: setDeletingStatement,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+
+  const paidCount = allStatements.filter((s) => s.status === "PAID").length;
 
   return (
     <div className="space-y-6">
@@ -117,161 +120,48 @@ export function StatementsPageClient() {
         </Button>
       </div>
 
-      <div className="flex gap-4">
-        <Select
-          value={selectedAccountId}
-          onValueChange={setSelectedAccountId}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All cards" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All cards</SelectItem>
-            {creditCards.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">Year:</span>
+          <Select
+            value={String(selectedYear)}
+            onValueChange={(v) => setSelectedYear(Number(v))}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {yearOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select
-          value={String(selectedYear)}
-          onValueChange={(v) => setSelectedYear(Number(v))}
-        >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {yearOptions.map((y) => (
-              <SelectItem key={y} value={String(y)}>
-                {y}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Switch id="show-paid" checked={showPaid} onCheckedChange={setShowPaid} />
+          <Label htmlFor="show-paid" className="cursor-pointer text-sm">
+            Show paid {paidCount > 0 && <span className="text-muted-foreground">({paidCount})</span>}
+          </Label>
+        </div>
       </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Loading statements...</p>
-      ) : statements.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="text-muted-foreground mb-4 h-12 w-12" />
-            <p className="text-muted-foreground text-lg">No statements found</p>
-            <p className="text-muted-foreground text-sm">
-              Create a statement to track your credit card billing cycles.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {statements.map((statement) => {
-            const account = (statement as Record<string, unknown>).account as
-              | { name: string; currency: string; color: string | null }
-              | undefined;
-            const expenseCount =
-              (statement as Record<string, unknown>).expenseCount as
-                | number
-                | undefined;
-            const totalsByCurrency =
-              (statement as Record<string, unknown>).totalsByCurrency as
-                | Record<string, number>
-                | undefined;
-
-            return (
-              <Card key={statement.id}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      {account?.name ?? "Unknown"}
-                    </div>
-                  </CardTitle>
-                  <Badge variant={STATUS_VARIANT[statement.status] ?? "outline"}>
-                    {STATUS_LABELS[statement.status] ?? statement.status}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {format(new Date(0, statement.month - 1), "MMMM")} {statement.year}
-                  </div>
-                  <div className="text-muted-foreground mt-1 space-y-1 text-sm">
-                    <p>
-                      Billing close:{" "}
-                      {format(new Date(statement.billingCloseDate), "dd-MM-yyyy")}
-                    </p>
-                    <p>
-                      Payment due:{" "}
-                      {format(new Date(statement.paymentDueDate), "dd-MM-yyyy")}
-                    </p>
-                    {totalsByCurrency && Object.keys(totalsByCurrency).length > 0 && (
-                      <div className="font-medium">
-                        {Object.entries(totalsByCurrency).map(([currency, total]) => (
-                          <p key={currency}>
-                            Total: {formatCurrency(total, currency as "PEN" | "USD" | "EUR")}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    {expenseCount != null && (
-                      <p>{expenseCount} expense{expenseCount !== 1 ? "s" : ""}</p>
-                    )}
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(statement)}
-                    >
-                      Edit
-                    </Button>
-                    {statement.status === "OPEN" && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setClosingStatement(statement)}
-                      >
-                        <Lock className="mr-1 h-3 w-3" />
-                        Close
-                      </Button>
-                    )}
-                    {statement.status === "CLOSED" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setPayingStatement(statement)}
-                      >
-                        <Banknote className="mr-1 h-3 w-3" />
-                        Pay
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeletingStatement(statement)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={visibleStatements}
+        isLoading={isLoading}
+        emptyMessage="No statements found."
+        rowClassName={(row) => (row.status === "PAID" ? "opacity-60" : undefined)}
+      />
 
       <StatementForm
         open={formOpen}
         onOpenChange={handleFormClose}
         statement={editingStatement}
-        defaultAccountId={
-          selectedAccountId !== "all" ? selectedAccountId : undefined
-        }
       />
 
-      {/* Delete confirmation */}
       <Dialog
         open={!!deletingStatement}
         onOpenChange={(open) => !open && setDeletingStatement(null)}
@@ -285,10 +175,7 @@ export function StatementsPageClient() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeletingStatement(null)}
-            >
+            <Button variant="outline" onClick={() => setDeletingStatement(null)}>
               Cancel
             </Button>
             <Button
@@ -302,7 +189,6 @@ export function StatementsPageClient() {
         </DialogContent>
       </Dialog>
 
-      {/* Close confirmation */}
       <Dialog
         open={!!closingStatement}
         onOpenChange={(open) => !open && setClosingStatement(null)}
@@ -316,16 +202,10 @@ export function StatementsPageClient() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setClosingStatement(null)}
-            >
+            <Button variant="outline" onClick={() => setClosingStatement(null)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleClose}
-              disabled={closeStatement.isPending}
-            >
+            <Button onClick={handleClose} disabled={closeStatement.isPending}>
               {closeStatement.isPending ? "Closing..." : "Close Statement"}
             </Button>
           </DialogFooter>

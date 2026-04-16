@@ -284,6 +284,12 @@ export const statementRouter = router({
       const creditCardAccountId = statement.accountId;
       const cardName = statement.account.name;
 
+      // Build exchange rate lookup
+      const rateMap = new Map<string, number>();
+      for (const r of input.exchangeRates) {
+        rateMap.set(`${r.fromCurrency}->${r.toCurrency}`, r.rate);
+      }
+
       const result = await ctx.db.$transaction(async (tx) => {
         // Mark all expenses as paid
         await tx.expense.updateMany({
@@ -296,15 +302,39 @@ export const statementRouter = router({
 
         // Create one transfer per (paying account, currency) group
         for (const [, group] of groups) {
+          const payingAccountCurrency = expenses.find(
+            (e) => e.payingAccountId === group.payingAccountId,
+          )?.payingAccount?.currency;
+
+          let amount = group.total;
+          let currency: Currency = group.currency;
+          let conversionNote = "";
+
+          if (
+            payingAccountCurrency &&
+            payingAccountCurrency !== group.currency
+          ) {
+            const rate = rateMap.get(`${group.currency}->${payingAccountCurrency}`);
+            if (!rate) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Missing exchange rate from ${group.currency} to ${payingAccountCurrency}`,
+              });
+            }
+            amount = group.total.mul(new Prisma.Decimal(rate));
+            currency = payingAccountCurrency;
+            conversionNote = ` Converted at rate ${rate} (${group.total.toFixed(2)} ${group.currency} → ${amount.toFixed(2)} ${currency}).`;
+          }
+
           await tx.transfer.create({
             data: {
               name: `Statement Payment: ${cardName} ${statement.month}/${statement.year}`,
-              amount: group.total,
-              currency: group.currency,
+              amount,
+              currency,
               date: input.paymentDate,
               fromAccountId: group.payingAccountId,
               toAccountId: creditCardAccountId,
-              notes: `Auto-created from statement payment. ${group.expenseCount} expense(s).`,
+              notes: `Auto-created from statement payment. ${group.expenseCount} expense(s).${conversionNote}`,
             },
           });
         }

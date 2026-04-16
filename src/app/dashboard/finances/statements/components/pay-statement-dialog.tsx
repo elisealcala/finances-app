@@ -59,6 +59,7 @@ export function PayStatementDialog({
       {
         payingAccountId: string;
         payingAccountName: string;
+        payingAccountCurrency: Currency;
         currency: Currency;
         total: number;
         count: number;
@@ -79,6 +80,7 @@ export function PayStatementDialog({
         map.set(groupKey, {
           payingAccountId: payerId,
           payingAccountName: expense.payingAccount.name,
+          payingAccountCurrency: expense.payingAccount.currency as Currency,
           currency: expCurrency,
           total: expense.amount,
           count: 1,
@@ -89,18 +91,43 @@ export function PayStatementDialog({
     return Array.from(map.values());
   }, [unpaidExpenses]);
 
+  // Track exchange rates for groups where currencies differ
+  const conversionGroups = useMemo(
+    () => groups.filter((g) => g.currency !== g.payingAccountCurrency),
+    [groups],
+  );
+
+  const [rates, setRates] = useState<Record<string, string>>({});
+
+  function rateKey(g: { currency: Currency; payingAccountCurrency: Currency }) {
+    return `${g.currency}->${g.payingAccountCurrency}`;
+  }
+
+  const allRatesProvided = conversionGroups.every((g) => {
+    const v = parseFloat(rates[rateKey(g)] ?? "");
+    return !isNaN(v) && v > 0;
+  });
+
   const canSubmit =
     !!paymentDateStr &&
     withoutPayer.length === 0 &&
     unpaidExpenses.length > 0 &&
+    allRatesProvided &&
     !payStatement.isPending;
 
   async function handlePay() {
     if (!statement || !canSubmit) return;
 
+    const exchangeRates = conversionGroups.map((g) => ({
+      fromCurrency: g.currency,
+      toCurrency: g.payingAccountCurrency,
+      rate: parseFloat(rates[rateKey(g)]!),
+    }));
+
     await payStatement.mutateAsync({
       id: statement.id,
       paymentDate: new Date(`${paymentDateStr}T00:00:00`),
+      exchangeRates,
     });
 
     onOpenChange(false);
@@ -153,32 +180,100 @@ export function PayStatementDialog({
               />
             </div>
 
+            {/* Currency conversion */}
+            {conversionGroups.length > 0 && (
+              <div className="grid gap-2">
+                <Label>Currency Conversion</Label>
+                <div className="grid gap-3">
+                  {conversionGroups.map((group) => {
+                    const key = rateKey(group);
+                    const rate = parseFloat(rates[key] ?? "");
+                    const converted = !isNaN(rate) && rate > 0 ? group.total * rate : null;
+                    return (
+                      <div
+                        key={`conv-${group.payingAccountId}::${group.currency}`}
+                        className="bg-muted/50 grid gap-2 rounded-md border p-3"
+                      >
+                        <div className="text-sm">
+                          <span className="font-medium">{group.payingAccountName}</span>
+                          <span className="text-muted-foreground">
+                            {" "}pays {formatCurrency(group.total, group.currency)} in {group.payingAccountCurrency}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            1 {group.currency} =
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            min="0"
+                            placeholder="Exchange rate"
+                            value={rates[key] ?? ""}
+                            onChange={(e) =>
+                              setRates((prev) => ({ ...prev, [key]: e.target.value }))
+                            }
+                            className="h-8"
+                          />
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            {group.payingAccountCurrency}
+                          </span>
+                        </div>
+                        {converted !== null && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Total: </span>
+                            <span className="font-mono font-semibold tabular-nums">
+                              {formatCurrency(converted, group.payingAccountCurrency)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Summary */}
             {groups.length > 0 && (
               <div className="grid gap-2">
                 <Label>Payment Summary</Label>
                 <div className="grid gap-2">
-                  {groups.map((group) => (
-                    <div
-                      key={`${group.payingAccountId}::${group.currency}`}
-                      className="bg-muted flex items-center justify-between rounded-md p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {group.payingAccountName}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {group.count} expense(s)
-                        </p>
+                  {groups.map((group) => {
+                    const needsConversion = group.currency !== group.payingAccountCurrency;
+                    const rate = needsConversion ? parseFloat(rates[rateKey(group)] ?? "") : 1;
+                    const finalAmount =
+                      needsConversion && !isNaN(rate) && rate > 0
+                        ? group.total * rate
+                        : group.total;
+                    const finalCurrency = needsConversion
+                      ? group.payingAccountCurrency
+                      : group.currency;
+                    return (
+                      <div
+                        key={`${group.payingAccountId}::${group.currency}`}
+                        className="bg-muted flex items-center justify-between rounded-md p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">
+                            {group.payingAccountName}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {group.count} expense(s)
+                            {needsConversion && (
+                              <>
+                                {" · "}
+                                {formatCurrency(group.total, group.currency)} →
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="text-sm">
+                          {formatCurrency(finalAmount, finalCurrency)}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="text-sm">
-                        {formatCurrency(
-                          group.total,
-                          group.currency as "PEN" | "USD" | "EUR",
-                        )}
-                      </Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

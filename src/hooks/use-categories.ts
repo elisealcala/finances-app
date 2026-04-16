@@ -22,6 +22,9 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.summary.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.budgetStatus.queryKey(),
+      });
     },
   });
 }
@@ -39,6 +42,9 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.summary.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.budgetStatus.queryKey(),
+      });
     },
   });
 }
@@ -55,6 +61,9 @@ export function useDeleteCategory() {
       });
       queryClient.invalidateQueries({
         queryKey: trpc.finances.category.summary.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.budgetStatus.queryKey(),
       });
     },
   });

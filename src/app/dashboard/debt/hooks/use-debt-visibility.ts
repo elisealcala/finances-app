@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { Debt } from "@/types/debt";
 
-export function useDebtVisibility() {
+export function useDebtVisibility(debts: Debt[]) {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+
+  // Auto-hide paid-off debts on first data load
+  useEffect(() => {
+    if (initializedRef.current || debts.length === 0) return;
+    initializedRef.current = true;
+    const paidOff = debts
+      .filter((d) => d.status === "PAID_OFF")
+      .map((d) => d.id);
+    if (paidOff.length > 0) {
+      setHiddenIds(new Set(paidOff));
+    }
+  }, [debts]);
 
   const toggleVisibility = useCallback((debtId: string) => {
     setHiddenIds((prev) => {
@@ -19,7 +32,7 @@ export function useDebtVisibility() {
   }, []);
 
   const filterVisible = useCallback(
-    (debts: Debt[]) => debts.filter((d) => !hiddenIds.has(d.id)),
+    (allDebts: Debt[]) => allDebts.filter((d) => !hiddenIds.has(d.id)),
     [hiddenIds],
   );
 

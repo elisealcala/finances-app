@@ -19,32 +19,26 @@ export function usePeriodFilter() {
 
   const goToPrev = useCallback(() => {
     if (month) {
-      // Month mode: go to previous month
-      setMonth((prev) => {
-        if (prev === 1) {
-          setYear((y) => y - 1);
-          return 12;
-        }
-        return prev! - 1;
-      });
+      if (month === 1) {
+        setYear((y) => y - 1);
+        setMonth(12);
+      } else {
+        setMonth(month - 1);
+      }
     } else {
-      // Year mode: go to previous year
       setYear((y) => y - 1);
     }
   }, [month]);
 
   const goToNext = useCallback(() => {
     if (month) {
-      // Month mode: go to next month
-      setMonth((prev) => {
-        if (prev === 12) {
-          setYear((y) => y + 1);
-          return 1;
-        }
-        return prev! + 1;
-      });
+      if (month === 12) {
+        setYear((y) => y + 1);
+        setMonth(1);
+      } else {
+        setMonth(month + 1);
+      }
     } else {
-      // Year mode: go to next year
       setYear((y) => y + 1);
     }
   }, [month]);

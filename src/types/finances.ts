@@ -92,7 +92,10 @@ export type BudgetStatus = {
   categoryName: string;
   color: string | null;
   budget: number;
+  grossSpent: number;
+  categoryIncome: number;
   spent: number;
   remaining: number;
   percentUsed: number;
+  isArchived: boolean;
 };

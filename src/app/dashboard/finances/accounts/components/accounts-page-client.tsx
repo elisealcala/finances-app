@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,14 +11,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { useAccounts, useDeleteAccount } from "@/hooks/use-accounts";
-import { AccountsGrid } from "./accounts-grid";
+import { useAccounts, useDeleteAccount, useUpdateAccount } from "@/hooks/use-accounts";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { DataTable } from "@/components/data-table";
 import { AccountForm } from "./account-form";
+import { getAccountColumns } from "./account-columns";
 import type { AccountWithBalance } from "@/types/finances";
 
 export function AccountsPageClient() {
-  const { data, isLoading } = useAccounts();
+  const [showClosed, setShowClosed] = useState(false);
+  const { data, isLoading } = useAccounts(
+    showClosed ? undefined : { isArchived: false },
+  );
   const deleteAccount = useDeleteAccount();
+  const updateAccount = useUpdateAccount();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] =
@@ -44,6 +51,20 @@ export function AccountsPageClient() {
     setDeletingAccount(null);
   }
 
+  function handleToggleArchive(account: AccountWithBalance) {
+    updateAccount.mutate({ id: account.id, isArchived: !account.isArchived });
+  }
+
+  const columns = useMemo(
+    () =>
+      getAccountColumns({
+        onEdit: handleEdit,
+        onDelete: setDeletingAccount,
+        onToggleArchive: handleToggleArchive,
+      }),
+    [],
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -59,11 +80,22 @@ export function AccountsPageClient() {
         </Button>
       </div>
 
-      <AccountsGrid
-        accounts={accounts}
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="show-closed"
+          checked={showClosed}
+          onCheckedChange={(v) => setShowClosed(!!v)}
+        />
+        <Label htmlFor="show-closed" className="text-muted-foreground text-sm">
+          Show closed accounts
+        </Label>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={accounts}
         isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={setDeletingAccount}
+        emptyMessage="No accounts yet. Click 'Add Account' to create one."
       />
 
       <AccountForm

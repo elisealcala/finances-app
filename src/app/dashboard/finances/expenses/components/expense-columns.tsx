@@ -47,6 +47,7 @@ export function getExpenseColumns({
       cell: ({ row }) => (
         <div className="font-medium">{row.getValue("name")}</div>
       ),
+      meta: { filterType: "text" },
     },
     {
       accessorKey: "amount",

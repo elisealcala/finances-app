@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Plus, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,12 @@ import { generateEqualPaymentSchedule } from "@/server/trpc/services/debt/schedu
 import { EditableScheduleTable, type ScheduleRow } from "./schedule-table";
 import type { CreateDebtInput } from "@/server/trpc/schemas/debt.schema";
 import type { DebtFee } from "@/types/debt";
+import {
+  generateScheduleTemplate,
+  scheduleRowsToCsv,
+  parseCsvToScheduleRows,
+  downloadCsv,
+} from "@/lib/csv";
 
 type ScheduleMode = "none" | "equal" | "custom";
 
@@ -70,6 +76,8 @@ export function DebtCreatePage() {
   const [fees, setFees] = useState<FeeRow[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const startedAt = useMemo(() => {
     if (startedMonth !== "" && startedYear !== "") {
@@ -95,6 +103,53 @@ export function DebtCreatePage() {
       { capital: 0, interest: 0, fees: 0, total: 0 },
     );
   }, [installments]);
+
+  function handleDownloadTemplate() {
+    const feeNamesForTemplate = feesForCalc.map((f) => f.name);
+    const csv = installments.length > 0
+      ? scheduleRowsToCsv(installments)
+      : generateScheduleTemplate(feeNamesForTemplate);
+    downloadCsv(csv, "payment-schedule-template.csv");
+  }
+
+  function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const { rows, feeNames } = parseCsvToScheduleRows(text);
+        setInstallments(rows);
+
+        // Sync fee definitions with imported fee columns
+        if (feeNames.length > 0) {
+          setFees(
+            feeNames.map((name) => ({
+              tempId: crypto.randomUUID(),
+              name,
+              amount: rows[0]?.fees.find((f) => f.name === name)?.amount ?? 0,
+            })),
+          );
+        }
+
+        // Switch to custom mode if currently set to none
+        if (scheduleMode === "none") {
+          setScheduleMode("custom");
+        }
+      } catch (err) {
+        setCsvError(
+          err instanceof Error ? err.message : "Failed to parse CSV file.",
+        );
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset input so the same file can be re-imported
+    e.target.value = "";
+  }
 
   function handleGenerate() {
     if (balance <= 0 || interestRate <= 0 || termMonths <= 0) return;
@@ -501,6 +556,27 @@ export function DebtCreatePage() {
                   Generate Schedule
                 </Button>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadTemplate}
+                >
+                  <Download className="mr-1 h-3.5 w-3.5" />
+                  {installments.length > 0 ? "Download CSV" : "Download Template"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => csvInputRef.current?.click()}
+                >
+                  <Upload className="mr-1 h-3.5 w-3.5" />
+                  Import CSV
+                </Button>
+              </div>
+              {csvError && <p className="text-destructive text-sm">{csvError}</p>}
               {installments.length > 0 && (
                 <EditableScheduleTable rows={installments} onChange={setInstallments} />
               )}
@@ -510,19 +586,70 @@ export function DebtCreatePage() {
           {scheduleMode === "custom" && (
             <div className="space-y-4">
               {installments.length === 0 ? (
-                <div className="text-center py-8 border rounded-md border-dashed">
-                  <p className="text-muted-foreground text-sm mb-3">
-                    Add installments manually from your bank&apos;s schedule.
+                <div className="text-center py-8 border rounded-md border-dashed space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    Add installments manually or import from a CSV file.
                   </p>
-                  <Button type="button" variant="outline" onClick={handleAddCustomRow}>
-                    + Add First Installment
-                  </Button>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button type="button" variant="outline" onClick={handleAddCustomRow}>
+                      + Add First Installment
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => csvInputRef.current?.click()}
+                    >
+                      <Upload className="mr-1 h-3.5 w-3.5" />
+                      Import CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadTemplate}
+                    >
+                      <Download className="mr-1 h-3.5 w-3.5" />
+                      Download Template
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <EditableScheduleTable rows={installments} onChange={setInstallments} />
+                <>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadTemplate}
+                    >
+                      <Download className="mr-1 h-3.5 w-3.5" />
+                      Download CSV
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => csvInputRef.current?.click()}
+                    >
+                      <Upload className="mr-1 h-3.5 w-3.5" />
+                      Import CSV
+                    </Button>
+                  </div>
+                  <EditableScheduleTable rows={installments} onChange={setInstallments} />
+                </>
               )}
+              {csvError && <p className="text-destructive text-sm">{csvError}</p>}
             </div>
           )}
+
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleCsvImport}
+          />
 
           {errors.schedule && <p className="text-destructive text-sm">{errors.schedule}</p>}
 

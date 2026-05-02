@@ -1,4 +1,4 @@
-import { format, addMonths, differenceInMonths } from "date-fns";
+import { format, addMonths, differenceInMonths, differenceInCalendarMonths } from "date-fns";
 import type { Debt, DebtFee } from "@/types/debt";
 
 /** Sum all monthly fee amounts. Returns 0 if no fees. */
@@ -173,7 +173,18 @@ export function generateTimeline(
     const rate = teaToMonthlyRate(debt.interestRate);
     const feeTotal = totalMonthlyFees(debt.fees);
     const effPayment = debt.minimumPayment - feeTotal;
-    const effectiveStart = debt.startedAt ? new Date(debt.startedAt) : now;
+    // For timeline display, the debt "starts" on its first installment.
+    // Prefer the actual first installment's due date when a schedule exists;
+    // otherwise fall back to one month after startedAt (the form's convention
+    // that the first payment is the month after the loan was opened).
+    const firstInstallmentDate = debt.installments?.[0]?.dueDate
+      ? new Date(debt.installments[0].dueDate)
+      : null;
+    const effectiveStart = firstInstallmentDate
+      ? firstInstallmentDate
+      : debt.startedAt
+        ? addMonths(new Date(debt.startedAt), 1)
+        : now;
 
     // Use originalBalance from the debt when available, otherwise reverse-compute
     const hasPayments = debt.payments && debt.payments.length > 0;
@@ -244,7 +255,7 @@ export function generateTimeline(
     for (let i = 0; i < debtInfos.length; i++) {
       const info = debtInfos[i];
       const running = runningBalances[i];
-      const monthsSinceDebtStart = differenceInMonths(date, info.effectiveStart);
+      const monthsSinceDebtStart = differenceInCalendarMonths(date, info.effectiveStart);
 
       if (monthsSinceDebtStart < 0) {
         row[info.debt.id] = 0;

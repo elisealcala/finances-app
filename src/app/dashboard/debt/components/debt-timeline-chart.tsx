@@ -221,41 +221,51 @@ export function DebtTimelineChart({
     }));
   }, [timelineData, simulation]);
 
-  // Filter by time period — always start from the current month
+  // Filter by time period. Start bound depends on the selection:
+  // - "all"       → earliest available month in the timeline
+  // - "this_year" → January of the current year
+  // - "next_*"    → current month
   const filteredData = useMemo(() => {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Base: only show current month and forward
-    const fromNow = mergedData.filter(
-      (row) => new Date(row.date) >= currentMonthStart,
-    );
-
-    if (timePeriod === "all") return fromNow;
-
-    let endFilter: Date;
+    let startFilter: Date;
+    let endFilter: Date | null = null;
 
     switch (timePeriod) {
+      case "all":
+        startFilter = new Date(-8640000000000000);
+        break;
       case "this_year":
+        startFilter = new Date(now.getFullYear(), 0, 1);
         endFilter = new Date(now.getFullYear(), 11, 31);
         break;
       case "next_3m":
+        startFilter = currentMonthStart;
         endFilter = addMonths(now, 3);
         break;
       case "next_6m":
+        startFilter = currentMonthStart;
         endFilter = addMonths(now, 6);
         break;
       case "next_12m":
+        startFilter = currentMonthStart;
         endFilter = addMonths(now, 12);
         break;
       case "next_24m":
+        startFilter = currentMonthStart;
         endFilter = addMonths(now, 24);
         break;
       default:
-        return fromNow;
+        startFilter = currentMonthStart;
     }
 
-    return fromNow.filter((row) => new Date(row.date) <= endFilter);
+    return mergedData.filter((row) => {
+      const d = new Date(row.date);
+      if (d < startFilter) return false;
+      if (endFilter && d > endFilter) return false;
+      return true;
+    });
   }, [mergedData, timePeriod]);
 
   // Aggregate payment markers by month (sum amounts, collect per-debt details)
@@ -292,8 +302,16 @@ export function DebtTimelineChart({
       const debt = debts[i];
       if (debt.status === "PAID_OFF") continue;
       const color = debt.color ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+      // A debt is only "paid off" once its balance goes to zero AFTER it has
+      // started being non-zero. Pre-start months also show zero and must not
+      // be mistaken for a payoff.
+      let hasStarted = false;
       for (const row of futureRows) {
         const bal = Number((row as Record<string, unknown>)[debt.id]) || 0;
+        if (!hasStarted) {
+          if (bal > 0) hasStarted = true;
+          continue;
+        }
         if (bal <= 0) {
           const label = row.monthLabel as string;
           markers.push({
@@ -385,6 +403,26 @@ export function DebtTimelineChart({
                 />
               }
             />
+            {/* Today's month marker */}
+            {(() => {
+              const todayLabel = format(new Date(), "MMM yyyy");
+              if (!filteredData.some((r) => r.monthLabel === todayLabel)) return null;
+              return (
+                <ReferenceLine
+                  x={todayLabel}
+                  stroke="hsl(var(--destructive))"
+                  strokeDasharray="2 3"
+                  strokeWidth={1.5}
+                  label={{
+                    value: "Today",
+                    position: "insideTopRight",
+                    fontSize: 10,
+                    fill: "hsl(var(--destructive))",
+                    fontWeight: 600,
+                  }}
+                />
+              );
+            })()}
             {/* Capital payment markers */}
             {Array.from(aggregatedPayments.values()).map((marker) => (
               <ReferenceLine
@@ -413,10 +451,13 @@ export function DebtTimelineChart({
                   strokeWidth={2}
                   label={{
                     value: `${marker.debtName} paid off`,
-                    position: "insideBottomRight",
+                    position: "insideTopLeft",
+                    angle: -90,
+                    offset: 8,
                     fontSize: 11,
                     fill: marker.color,
                     fontWeight: 600,
+                    textAnchor: "end",
                   }}
                 />
               ))}

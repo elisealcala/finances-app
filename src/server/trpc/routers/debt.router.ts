@@ -47,7 +47,10 @@ export const debtRouter = router({
     const rawDebts = await ctx.db.debt.findMany({
       where,
       orderBy: { [sortBy]: sortOrder },
-      include: includePayments,
+      include: {
+        ...includePayments,
+        installments: { orderBy: { installmentNumber: "asc" } },
+      },
     });
 
     const debts = rawDebts.map(serializeDebt);

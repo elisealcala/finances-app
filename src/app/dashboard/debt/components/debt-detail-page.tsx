@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-installments";
 import { ReadonlyScheduleTable } from "./schedule-table";
 import { CapitalPaymentDialog } from "./capital-payment-dialog";
+import { scheduleRowsToCsv, downloadCsv } from "@/lib/csv";
 
 type DebtDetailPageProps = {
   debtId: string;
@@ -208,8 +209,29 @@ export function DebtDetailPage({ debtId }: DebtDetailPageProps) {
       {/* Schedule table */}
       {debt.hasSchedule && installments.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Payment Schedule</CardTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const csv = scheduleRowsToCsv(
+                  installments.map((i) => ({
+                    installmentNumber: i.installmentNumber,
+                    dueDate: typeof i.dueDate === "string" ? new Date(i.dueDate) : i.dueDate,
+                    capital: i.capital,
+                    interest: i.interest,
+                    fees: i.fees,
+                    totalAmount: i.totalAmount,
+                  })),
+                );
+                downloadCsv(csv, `${debt.name.toLowerCase().replace(/\s+/g, "-")}-schedule.csv`);
+              }}
+            >
+              <Download className="mr-1 h-3.5 w-3.5" />
+              Download CSV
+            </Button>
           </CardHeader>
           <CardContent>
             <ReadonlyScheduleTable

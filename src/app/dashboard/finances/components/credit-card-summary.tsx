@@ -31,7 +31,7 @@ export function CreditCardSummary({
           {account.name}
         </CardTitle>
         {account.debtId && (
-          <Link href="/dashboard/debt">
+          <Link href="/dashboard/finances/debt">
             <Button variant="ghost" size="sm">
               <ExternalLink className="mr-1 h-3 w-3" />
               Debt

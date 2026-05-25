@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import type { ScheduleRow } from "@/app/dashboard/debt/components/schedule-table";
+import type { ScheduleRow } from "@/app/dashboard/finances/debt/components/schedule-table";
 
 /**
  * Generate a CSV template with headers only (and optionally fee columns).

@@ -56,9 +56,12 @@ export const incomeRouter = router({
 
       const totalsByCurrency: Record<string, number> = {};
       for (const i of rawIncomes) {
+        const withRelations = i as unknown as {
+          currency?: string | null;
+          account?: { currency?: string };
+        };
         const currency =
-          (i as unknown as { account?: { currency?: string } }).account
-            ?.currency ?? "PEN";
+          withRelations.currency ?? withRelations.account?.currency ?? "PEN";
         totalsByCurrency[currency] =
           (totalsByCurrency[currency] ?? 0) + Number(i.amount);
       }
@@ -75,6 +78,7 @@ export const incomeRouter = router({
           amount: new Prisma.Decimal(input.amount),
           date: input.date,
           notes: input.notes ?? null,
+          currency: input.currency ?? null,
           accountId: input.accountId,
           categoryId: input.categoryId ?? null,
         },
@@ -97,6 +101,7 @@ export const incomeRouter = router({
         updateData.amount = new Prisma.Decimal(data.amount);
       if (data.date !== undefined) updateData.date = data.date;
       if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.currency !== undefined) updateData.currency = data.currency;
       if (data.accountId !== undefined)
         updateData.account = { connect: { id: data.accountId } };
       if (data.categoryId !== undefined)

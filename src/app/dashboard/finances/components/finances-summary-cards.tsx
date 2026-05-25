@@ -6,25 +6,31 @@ import { DollarSign, TrendingDown, TrendingUp, PiggyBank } from "lucide-react";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 import type { PeriodSummary } from "@/types/finances";
 
-export function FinancesSummaryCards({ summary }: { summary?: PeriodSummary }) {
+export function FinancesSummaryCards({
+  summary,
+  currency = "PEN",
+}: {
+  summary?: PeriodSummary;
+  currency?: "PEN" | "USD" | "EUR";
+}) {
   if (!summary) return <SummarySkeleton />;
 
   const cards = [
     {
       title: "Total Income",
-      value: formatCurrency(summary.totalIncome),
+      value: formatCurrency(summary.totalIncome, currency),
       icon: TrendingUp,
       className: "text-green-600",
     },
     {
       title: "Total Expenses",
-      value: formatCurrency(summary.totalExpenses),
+      value: formatCurrency(summary.totalExpenses, currency),
       icon: TrendingDown,
       className: "text-red-600",
     },
     {
       title: "Savings",
-      value: formatCurrency(summary.savings),
+      value: formatCurrency(summary.savings, currency),
       icon: PiggyBank,
       className: summary.savings >= 0 ? "text-green-600" : "text-red-600",
     },

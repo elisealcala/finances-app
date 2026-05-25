@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -14,38 +8,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  EChart,
+  echarts,
+  useChartColors,
+  type EChartsOption,
+} from "@/components/ui/echart";
 import { formatCurrency } from "@/lib/utils";
 import { useCashFlow } from "@/hooks/use-projection";
 
-const chartConfig = {
-  totalBalance: {
-    label: "Total Balance",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
+const COLOR_REF = "hsl(var(--chart-1))";
 
 function CashFlowTooltip({
-  active,
-  payload,
+  label,
+  totalBalance,
 }: {
-  active?: boolean;
-  payload?: Array<{ value: number; payload: { label: string; totalBalance: number } }>;
-  label?: string;
+  label: string;
+  totalBalance: number;
 }) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload;
-
   return (
     <div className="bg-background rounded-lg border p-3 shadow-sm">
-      <p className="text-sm font-medium">{data.label}</p>
+      <p className="text-sm font-medium">{label}</p>
       <p className="text-muted-foreground text-sm">
-        {formatCurrency(data.totalBalance)}
+        {formatCurrency(totalBalance)}
       </p>
     </div>
   );
@@ -53,6 +39,70 @@ function CashFlowTooltip({
 
 export function CashFlowChart() {
   const { data, isLoading } = useCashFlow(6);
+  const colors = useChartColors([COLOR_REF]);
+  const seriesColor = colors[COLOR_REF] || "#3b82f6";
+
+  const option = useMemo<EChartsOption>(() => {
+    const rows = (data ?? []).map((m) => ({
+      label: m.label,
+      totalBalance: m.totalBalance,
+    }));
+
+    return {
+      grid: { left: 56, right: 16, top: 16, bottom: 32, containLabel: false },
+      xAxis: {
+        type: "category",
+        data: rows.map((r) => r.label),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "var(--muted-foreground)" },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: "rgba(127,127,127,0.15)" } },
+        axisLabel: {
+          color: "var(--muted-foreground)",
+          formatter: (v: number) => formatCurrency(v),
+        },
+      },
+      tooltip: { trigger: "axis" },
+      series: [
+        {
+          name: "totalBalance",
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          data: rows.map((r) => r.totalBalance),
+          lineStyle: { color: seriesColor, width: 2 },
+          itemStyle: { color: seriesColor },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: withAlpha(seriesColor, 0.8) },
+              { offset: 1, color: withAlpha(seriesColor, 0.1) },
+            ]),
+          },
+        },
+      ],
+    };
+  }, [data, seriesColor]);
+
+  const renderTooltip = (
+    params: { axisValueLabel?: string; value: number | number[] | string | null }[],
+  ) => {
+    const p = params[0];
+    if (!p) return null;
+    const value =
+      typeof p.value === "number"
+        ? p.value
+        : Array.isArray(p.value)
+          ? Number(p.value[1])
+          : Number(p.value ?? 0);
+    return (
+      <CashFlowTooltip label={p.axisValueLabel ?? ""} totalBalance={value} />
+    );
+  };
 
   if (isLoading) {
     return (
@@ -86,12 +136,6 @@ export function CashFlowChart() {
     );
   }
 
-  const chartData = data.map((month) => ({
-    month: month.month,
-    label: month.label,
-    totalBalance: month.totalBalance,
-  }));
-
   return (
     <Card>
       <CardHeader>
@@ -101,46 +145,20 @@ export function CashFlowChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => formatCurrency(v)}
-              width={90}
-            />
-            <ChartTooltip content={<CashFlowTooltip />} />
-            <defs>
-              <linearGradient id="fillBalance" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-totalBalance)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-totalBalance)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <Area
-              type="monotone"
-              dataKey="totalBalance"
-              stroke="var(--color-totalBalance)"
-              fill="url(#fillBalance)"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ChartContainer>
+        <EChart
+          option={option}
+          tooltip={renderTooltip}
+          className="h-[300px]"
+        />
       </CardContent>
     </Card>
   );
+}
+
+function withAlpha(color: string, alpha: number): string {
+  // rgb(r,g,b) -> rgba(r,g,b,a)
+  const m = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`;
+  // already rgba or any other color string: return as-is (acceptable for canvas)
+  return color;
 }

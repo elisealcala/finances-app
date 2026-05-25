@@ -64,7 +64,7 @@ export function DashboardOverview() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Link href="/dashboard/debt">
+          <Link href="/dashboard/finances/debt">
             <Card className="transition-colors hover:border-primary/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">

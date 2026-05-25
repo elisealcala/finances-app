@@ -107,9 +107,12 @@ export function DataTable<TData, TValue>({
     return parts.join("|");
   }, [data, columnFilterTypes, columns]);
 
-  // Auto-select all values for faceted filters on first load,
-  // and select new values when data changes (e.g. navigating months)
+  // Auto-select all values for faceted filters on first load. When the
+  // dataset's unique values change later (new month, new expense, etc.), keep
+  // the filter in sync ONLY if the user is still on the default "all selected"
+  // state. Any manual narrowing the user has done is preserved verbatim.
   const prevFacetedKey = useRef("");
+  const prevAllValuesRef = useRef(new Map<string, string[]>());
   useEffect(() => {
     if (data.length === 0 || facetedValuesKey === prevFacetedKey.current) return;
     prevFacetedKey.current = facetedValuesKey;
@@ -133,6 +136,10 @@ export function DataTable<TData, TValue>({
         } else if (accessorKey) {
           allValues = [...new Set(data.map((row) => String((row as Record<string, unknown>)[accessorKey])))];
         }
+
+        const prevAllValues = prevAllValuesRef.current.get(id) ?? null;
+        prevAllValuesRef.current.set(id, allValues);
+
         if (allValues.length === 0) continue;
 
         const idx = existingMap.get(id);
@@ -141,15 +148,22 @@ export function DataTable<TData, TValue>({
           updated.push({ id, value: allValues });
           changed = true;
         } else {
-          // Data changed: only add genuinely new values
-          const current = new Set(updated[idx].value as string[]);
-          const prevSize = current.size;
-          for (const v of allValues) {
-            current.add(v);
-          }
-          if (current.size !== prevSize) {
-            updated[idx] = { id, value: [...current] };
-            changed = true;
+          const current = updated[idx].value as string[];
+          // Was the filter still in its "default" state (every previously-known
+          // value selected)? If so, refresh it to the new full set. Otherwise
+          // the user has narrowed it manually — leave it alone.
+          const isDefault =
+            prevAllValues !== null &&
+            current.length === prevAllValues.length &&
+            prevAllValues.every((v) => current.includes(v));
+          if (isDefault) {
+            const allMatches =
+              current.length === allValues.length &&
+              allValues.every((v) => current.includes(v));
+            if (!allMatches) {
+              updated[idx] = { id, value: allValues };
+              changed = true;
+            }
           }
         }
       }

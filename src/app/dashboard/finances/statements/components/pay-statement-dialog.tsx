@@ -17,6 +17,7 @@ import { AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useStatement } from "@/hooks/use-statements";
 import { usePayStatement } from "@/hooks/use-statements";
+import { CurrencyConversionField } from "@/app/dashboard/finances/components/currency-conversion-field";
 import type { CreditCardStatement } from "@/types/finances";
 import type { Currency } from "@/types/finances";
 
@@ -187,47 +188,19 @@ export function PayStatementDialog({
                 <div className="grid gap-3">
                   {conversionGroups.map((group) => {
                     const key = rateKey(group);
-                    const rate = parseFloat(rates[key] ?? "");
-                    const converted = !isNaN(rate) && rate > 0 ? group.total * rate : null;
                     return (
-                      <div
+                      <CurrencyConversionField
                         key={`conv-${group.payingAccountId}::${group.currency}`}
-                        className="bg-muted/50 grid gap-2 rounded-md border p-3"
-                      >
-                        <div className="text-sm">
-                          <span className="font-medium">{group.payingAccountName}</span>
-                          <span className="text-muted-foreground">
-                            {" "}pays {formatCurrency(group.total, group.currency)} in {group.payingAccountCurrency}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground text-xs whitespace-nowrap">
-                            1 {group.currency} =
-                          </span>
-                          <Input
-                            type="number"
-                            step="0.0001"
-                            min="0"
-                            placeholder="Exchange rate"
-                            value={rates[key] ?? ""}
-                            onChange={(e) =>
-                              setRates((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                            className="h-8"
-                          />
-                          <span className="text-muted-foreground text-xs whitespace-nowrap">
-                            {group.payingAccountCurrency}
-                          </span>
-                        </div>
-                        {converted !== null && (
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">Total: </span>
-                            <span className="font-mono font-semibold tabular-nums">
-                              {formatCurrency(converted, group.payingAccountCurrency)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                        fromCurrency={group.currency}
+                        toCurrency={group.payingAccountCurrency}
+                        amount={group.total}
+                        rate={rates[key] ?? ""}
+                        onRateChange={(v) =>
+                          setRates((prev) => ({ ...prev, [key]: v }))
+                        }
+                        label={group.payingAccountName}
+                        showHeader={false}
+                      />
                     );
                   })}
                 </div>

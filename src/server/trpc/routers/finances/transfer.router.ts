@@ -13,6 +13,7 @@ function serializeTransfer(transfer: PrismaTransfer & { fromAccount?: unknown; t
   return {
     ...transfer,
     amount: Number(transfer.amount),
+    rate: transfer.rate != null ? Number(transfer.rate) : null,
   };
 }
 
@@ -80,6 +81,11 @@ export const transferRouter = router({
           notes: input.notes ?? null,
           fromAccountId: input.fromAccountId,
           toAccountId: input.toAccountId,
+          currency: input.currency ?? null,
+          rate:
+            input.rate !== null && input.rate !== undefined
+              ? new Prisma.Decimal(input.rate)
+              : null,
         },
         include: {
           fromAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
@@ -104,6 +110,10 @@ export const transferRouter = router({
         updateData.fromAccount = { connect: { id: data.fromAccountId } };
       if (data.toAccountId !== undefined)
         updateData.toAccount = { connect: { id: data.toAccountId } };
+      if (data.currency !== undefined) updateData.currency = data.currency;
+      if (data.rate !== undefined)
+        updateData.rate =
+          data.rate !== null ? new Prisma.Decimal(data.rate) : null;
 
       try {
         const transfer = await ctx.db.transfer.update({

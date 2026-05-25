@@ -25,8 +25,9 @@ import {
   useUpdateTransfer,
 } from "@/hooks/use-transfers";
 import { useAccounts } from "@/hooks/use-accounts";
-import type { Transfer, Account } from "@/types/finances";
+import type { Transfer, Account, Currency } from "@/types/finances";
 import type { CreateTransferInput } from "@/server/trpc/schemas/finances.schema";
+import { CurrencyConversionField } from "@/app/dashboard/finances/components/currency-conversion-field";
 
 type TransferFormProps = {
   open: boolean;
@@ -41,6 +42,8 @@ const INITIAL_STATE: CreateTransferInput = {
   notes: null,
   fromAccountId: "",
   toAccountId: "",
+  currency: null,
+  rate: null,
 };
 
 export function TransferForm({
@@ -52,6 +55,7 @@ export function TransferForm({
   const [dateStr, setDateStr] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const [rateStr, setRateStr] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const createTransfer = useCreateTransfer();
@@ -73,8 +77,11 @@ export function TransferForm({
         notes: transfer.notes ?? null,
         fromAccountId: transfer.fromAccountId,
         toAccountId: transfer.toAccountId,
+        currency: transfer.currency ?? null,
+        rate: transfer.rate ?? null,
       });
       setDateStr(d.toISOString().split("T")[0]);
+      setRateStr(transfer.rate != null ? String(transfer.rate) : "");
     } else {
       setForm((prev) => ({
         ...INITIAL_STATE,
@@ -82,6 +89,7 @@ export function TransferForm({
         toAccountId: prev.toAccountId || "",
       }));
       setDateStr(new Date().toISOString().split("T")[0]);
+      setRateStr("");
     }
     setErrors({});
   }, [transfer, open]);
@@ -96,6 +104,16 @@ export function TransferForm({
     }
   }, [accounts, transfer, form.fromAccountId]);
 
+  const fromAccount = accounts.find((a) => a.id === form.fromAccountId);
+  const toAccount = accounts.find((a) => a.id === form.toAccountId);
+  const fromCurrency = (fromAccount?.currency ?? "PEN") as Currency;
+  const toCurrency = (toAccount?.currency ?? "PEN") as Currency;
+  const needsConversion =
+    !!form.fromAccountId &&
+    !!form.toAccountId &&
+    form.fromAccountId !== form.toAccountId &&
+    fromCurrency !== toCurrency;
+
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
     if (!form.name.trim()) newErrors.name = "Name is required";
@@ -104,6 +122,10 @@ export function TransferForm({
     if (!form.toAccountId) newErrors.toAccountId = "To account is required";
     if (form.fromAccountId === form.toAccountId)
       newErrors.toAccountId = "Must be different from source";
+    if (needsConversion) {
+      const r = parseFloat(rateStr);
+      if (isNaN(r) || r <= 0) newErrors.rate = "Exchange rate is required";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -112,7 +134,13 @@ export function TransferForm({
     e.preventDefault();
     if (!validate()) return;
 
-    const data = { ...form, date: new Date(`${dateStr}T00:00:00`) };
+    const parsedRate = parseFloat(rateStr);
+    const data: CreateTransferInput = {
+      ...form,
+      date: new Date(`${dateStr}T00:00:00`),
+      currency: needsConversion ? fromCurrency : null,
+      rate: needsConversion && !isNaN(parsedRate) ? parsedRate : null,
+    };
 
     if (isEditing && transfer) {
       await updateTransfer.mutateAsync({ id: transfer.id, ...data });
@@ -235,6 +263,22 @@ export function TransferForm({
                 )}
               </div>
             </div>
+
+            {needsConversion && (
+              <>
+                <CurrencyConversionField
+                  fromCurrency={fromCurrency}
+                  toCurrency={toCurrency}
+                  amount={form.amount}
+                  rate={rateStr}
+                  onRateChange={setRateStr}
+                  label={fromAccount?.name}
+                />
+                {errors.rate && (
+                  <p className="text-destructive text-sm">{errors.rate}</p>
+                )}
+              </>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="tf-notes">Notes</Label>

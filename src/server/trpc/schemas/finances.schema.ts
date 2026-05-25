@@ -147,6 +147,7 @@ export const createIncomeSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
   amount: z.number().positive("Amount must be positive"),
   date: z.date(),
+  currency: currencySchema.nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
   accountId: z.string().cuid(),
   categoryId: z.string().cuid().nullable().optional(),
@@ -182,6 +183,8 @@ export const createTransferSchema = z.object({
   notes: z.string().max(500).nullable().optional(),
   fromAccountId: z.string().cuid(),
   toAccountId: z.string().cuid(),
+  currency: currencySchema.nullable().optional(),
+  rate: z.number().positive().nullable().optional(),
 });
 
 export const updateTransferSchema = createTransferSchema.partial().extend({
@@ -267,11 +270,13 @@ export const payStatementSchema = z.object({
 
 export const monthlySummarySchema = z.object({
   year: z.number().int(),
+  currency: currencySchema.optional().default("PEN"),
 });
 
 export const periodSummarySchema = z.object({
   year: z.number().int(),
   month: z.number().int().min(1).max(12).optional(),
+  currency: currencySchema.optional().default("PEN"),
 });
 
 export const categorySummarySchema = z.object({

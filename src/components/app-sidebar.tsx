@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  LayoutDashboard,
-  CreditCard,
-  Wallet,
-  Target,
-} from "lucide-react";
+import { LayoutDashboard, Wallet, Target } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -25,11 +20,6 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Debt",
-    url: "/dashboard/debt",
-    icon: CreditCard,
-  },
-  {
     title: "Finances",
     url: "/dashboard/finances",
     icon: Wallet,
@@ -40,6 +30,7 @@ const navItems = [
       { title: "Income", url: "/dashboard/finances/incomes" },
       { title: "Transfers", url: "/dashboard/finances/transfers" },
       { title: "Statements", url: "/dashboard/finances/statements" },
+      { title: "Debt", url: "/dashboard/finances/debt" },
       { title: "Budget", url: "/dashboard/finances/budget" },
       { title: "Categories", url: "/dashboard/finances/categories" },
       { title: "Predictions", url: "/dashboard/finances/predictions" },

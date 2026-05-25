@@ -238,7 +238,7 @@ export function DebtCreatePage() {
     };
 
     await createDebt.mutateAsync(data);
-    router.push("/dashboard/debt");
+    router.push("/dashboard/finances/debt");
   }
 
   return (
@@ -250,7 +250,7 @@ export function DebtCreatePage() {
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => router.push("/dashboard/debt")}
+            onClick={() => router.push("/dashboard/finances/debt")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -672,7 +672,7 @@ export function DebtCreatePage() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/dashboard/debt")}
+          onClick={() => router.push("/dashboard/finances/debt")}
         >
           Cancel
         </Button>

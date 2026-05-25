@@ -25,6 +25,7 @@ import { useAccounts } from "@/hooks/use-accounts";
 import { useCategories } from "@/hooks/use-categories";
 import type { Income, Account, Category } from "@/types/finances";
 import type { CreateIncomeInput } from "@/server/trpc/schemas/finances.schema";
+import { CURRENCY_LABELS } from "@/lib/utils";
 
 type IncomeFormProps = {
   open: boolean;
@@ -39,6 +40,7 @@ const INITIAL_STATE: CreateIncomeInput = {
   notes: null,
   accountId: "",
   categoryId: null,
+  currency: null,
 };
 
 export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
@@ -69,6 +71,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
         notes: income.notes ?? null,
         accountId: income.accountId,
         categoryId: income.categoryId ?? null,
+        currency: income.currency ?? null,
       });
       setDateStr(d.toISOString().split("T")[0]);
     } else {
@@ -83,9 +86,28 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
 
   useEffect(() => {
     if (!income && !form.accountId && accounts.length > 0) {
-      setForm((prev) => ({ ...prev, accountId: accounts[0].id }));
+      const first = accounts[0];
+      setForm((prev) => ({
+        ...prev,
+        accountId: first.id,
+        currency:
+          prev.currency ??
+          (first.currency as CreateIncomeInput["currency"]),
+      }));
     }
   }, [accounts, income, form.accountId]);
+
+  function handleAccountChange(accountId: string) {
+    const account = accounts.find((a) => a.id === accountId);
+    setForm((prev) => ({
+      ...prev,
+      accountId,
+      currency:
+        prev.currency ??
+        (account?.currency as CreateIncomeInput["currency"] | undefined) ??
+        null,
+    }));
+  }
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
@@ -136,7 +158,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="inc-amount">Amount *</Label>
                 <Input
@@ -158,6 +180,30 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="inc-currency">Currency</Label>
+                <Select
+                  value={form.currency ?? "PEN"}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      currency: v as CreateIncomeInput["currency"],
+                    })
+                  }
+                >
+                  <SelectTrigger id="inc-currency" className="w-[110px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CURRENCY_LABELS).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="inc-date">Date *</Label>
                 <Input
                   id="inc-date"
@@ -173,7 +219,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
                 <Label htmlFor="inc-account">Account *</Label>
                 <Select
                   value={form.accountId}
-                  onValueChange={(v) => setForm({ ...form, accountId: v })}
+                  onValueChange={handleAccountChange}
                 >
                   <SelectTrigger id="inc-account">
                     <SelectValue placeholder="Select account" />

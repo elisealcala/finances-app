@@ -1,38 +1,65 @@
 import { router, publicProcedure } from "@/server/trpc/init";
-import { monthlySummarySchema, periodSummarySchema } from "@/server/trpc/schemas/finances.schema";
+import {
+  monthlySummarySchema,
+  periodSummarySchema,
+} from "@/server/trpc/schemas/finances.schema";
+import type { Currency } from "@/generated/prisma/client";
+
+/**
+ * An income/expense row's effective currency is its own `currency` column,
+ * or its account's currency if that's null. We can't express this as a single
+ * `groupBy` in Prisma, so filtering happens via an OR clause that matches
+ * either branch.
+ */
+function effectiveCurrencyFilter(currency: Currency) {
+  return {
+    OR: [{ currency }, { currency: null, account: { currency } }],
+  };
+}
 
 export const overviewRouter = router({
   monthlySummary: publicProcedure
     .input(monthlySummarySchema)
     .query(async ({ ctx, input }) => {
-      const { year } = input;
-      const months = [];
+      const { year, currency } = input;
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year + 1, 0, 1);
 
-      for (let month = 1; month <= 12; month++) {
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 1);
+      const [incomes, expenses] = await Promise.all([
+        ctx.db.income.findMany({
+          where: {
+            date: { gte: startDate, lt: endDate },
+            ...effectiveCurrencyFilter(currency),
+          },
+          select: { date: true, amount: true },
+        }),
+        ctx.db.expense.findMany({
+          where: {
+            date: { gte: startDate, lt: endDate },
+            ...effectiveCurrencyFilter(currency),
+          },
+          select: { date: true, amount: true },
+        }),
+      ]);
 
-        const [incomeAgg, expenseAgg] = await Promise.all([
-          ctx.db.income.aggregate({
-            where: { date: { gte: startDate, lt: endDate } },
-            _sum: { amount: true },
-          }),
-          ctx.db.expense.aggregate({
-            where: { date: { gte: startDate, lt: endDate } },
-            _sum: { amount: true },
-          }),
-        ]);
+      const byMonth = new Map<number, { income: number; expenses: number }>();
+      for (let m = 1; m <= 12; m++) byMonth.set(m, { income: 0, expenses: 0 });
 
-        const income = Number(incomeAgg._sum.amount ?? 0);
-        const expenses = Number(expenseAgg._sum.amount ?? 0);
-
-        months.push({
-          month,
-          income,
-          expenses,
-          savings: income - expenses,
-        });
+      for (const i of incomes) {
+        const slot = byMonth.get(i.date.getMonth() + 1)!;
+        slot.income += Number(i.amount);
       }
+      for (const e of expenses) {
+        const slot = byMonth.get(e.date.getMonth() + 1)!;
+        slot.expenses += Number(e.amount);
+      }
+
+      const months = Array.from(byMonth.entries()).map(([month, v]) => ({
+        month,
+        income: v.income,
+        expenses: v.expenses,
+        savings: v.income - v.expenses,
+      }));
 
       return { months };
     }),
@@ -40,7 +67,7 @@ export const overviewRouter = router({
   periodSummary: publicProcedure
     .input(periodSummarySchema)
     .query(async ({ ctx, input }) => {
-      const { year, month } = input;
+      const { year, month, currency } = input;
       const startDate = month
         ? new Date(year, month - 1, 1)
         : new Date(year, 0, 1);
@@ -48,44 +75,59 @@ export const overviewRouter = router({
         ? new Date(year, month, 1)
         : new Date(year + 1, 0, 1);
 
-      const [incomeAgg, expenseAgg] = await Promise.all([
-        ctx.db.income.aggregate({
-          where: { date: { gte: startDate, lt: endDate } },
-          _sum: { amount: true },
+      const [incomes, expenses] = await Promise.all([
+        ctx.db.income.findMany({
+          where: {
+            date: { gte: startDate, lt: endDate },
+            ...effectiveCurrencyFilter(currency),
+          },
+          select: { amount: true },
         }),
-        ctx.db.expense.aggregate({
-          where: { date: { gte: startDate, lt: endDate } },
-          _sum: { amount: true },
+        ctx.db.expense.findMany({
+          where: {
+            date: { gte: startDate, lt: endDate },
+            ...effectiveCurrencyFilter(currency),
+          },
+          select: { amount: true, categoryId: true },
         }),
       ]);
 
-      const totalIncome = Number(incomeAgg._sum.amount ?? 0);
-      const totalExpenses = Number(expenseAgg._sum.amount ?? 0);
+      const totalIncome = incomes.reduce(
+        (s, i) => s + Number(i.amount),
+        0,
+      );
+      const totalExpenses = expenses.reduce(
+        (s, e) => s + Number(e.amount),
+        0,
+      );
       const savings = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
 
-      // Top categories by expense amount
-      const categoryExpenses = await ctx.db.expense.groupBy({
-        by: ["categoryId"],
-        where: { date: { gte: startDate, lt: endDate }, categoryId: { not: null } },
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
-        take: 5,
-      });
+      const byCategory = new Map<string, number>();
+      for (const e of expenses) {
+        if (!e.categoryId) continue;
+        byCategory.set(
+          e.categoryId,
+          (byCategory.get(e.categoryId) ?? 0) + Number(e.amount),
+        );
+      }
+      const sortedEntries = Array.from(byCategory.entries()).sort(
+        (a, b) => b[1] - a[1],
+      );
 
-      const categoryIds = categoryExpenses
-        .map((c) => c.categoryId)
-        .filter((id): id is string => id !== null);
-      const categories = await ctx.db.category.findMany({
-        where: { id: { in: categoryIds } },
-      });
+      const categoryIds = sortedEntries.map(([id]) => id);
+      const categories = categoryIds.length
+        ? await ctx.db.category.findMany({
+            where: { id: { in: categoryIds } },
+          })
+        : [];
       const catMap = new Map(categories.map((c) => [c.id, c]));
 
-      const topCategories = categoryExpenses.map((ce) => {
-        const cat = catMap.get(ce.categoryId!);
+      const topCategories = sortedEntries.map(([id, amount]) => {
+        const cat = catMap.get(id);
         return {
           name: cat?.name ?? "Unknown",
-          amount: Number(ce._sum.amount ?? 0),
+          amount,
           color: cat?.color ?? null,
         };
       });

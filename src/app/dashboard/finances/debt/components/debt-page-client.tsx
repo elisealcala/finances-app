@@ -77,7 +77,7 @@ export function DebtPageClient() {
             Manage and track all your debts in one place.
           </p>
         </div>
-        <Button onClick={() => router.push("/dashboard/debt/new")}>
+        <Button onClick={() => router.push("/dashboard/finances/debt/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Debt
         </Button>
@@ -97,7 +97,7 @@ export function DebtPageClient() {
             debts={allDebts}
             isLoading={isLoading}
             onDelete={setDeletingDebt}
-            onView={(debt) => router.push(`/dashboard/debt/${debt.id}`)}
+            onView={(debt) => router.push(`/dashboard/finances/debt/${debt.id}`)}
             onToggleVisibility={toggleVisibility}
             isHidden={isHidden}
             hiddenCount={hiddenCount}

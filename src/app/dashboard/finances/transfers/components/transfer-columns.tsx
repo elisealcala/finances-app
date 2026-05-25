@@ -48,7 +48,44 @@ export function getTransferColumns({
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => formatCurrency(Number(row.getValue("amount"))),
+      cell: ({ row }) => {
+        const t = row.original;
+        const sourceCurrency =
+          (t.currency ?? t.fromAccount?.currency ?? "PEN") as
+            | "PEN"
+            | "USD"
+            | "EUR";
+        const destCurrency = (t.toAccount?.currency ?? sourceCurrency) as
+          | "PEN"
+          | "USD"
+          | "EUR";
+        const amount = Number(t.amount);
+        const isCross =
+          sourceCurrency !== destCurrency &&
+          t.rate != null &&
+          Number(t.rate) > 0;
+
+        if (!isCross) {
+          return (
+            <span className="font-mono tabular-nums">
+              {formatCurrency(amount, sourceCurrency)}
+            </span>
+          );
+        }
+
+        const converted = amount * Number(t.rate);
+        return (
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="font-mono font-medium tabular-nums">
+              {formatCurrency(amount, sourceCurrency)}
+            </span>
+            <ArrowRight className="text-muted-foreground h-3 w-3" />
+            <span className="font-mono font-medium tabular-nums">
+              {formatCurrency(converted, destCurrency)}
+            </span>
+          </div>
+        );
+      },
     },
     {
       id: "fromTo",

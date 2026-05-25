@@ -52,8 +52,9 @@ export type Income = Omit<PrismaIncome, "amount"> & {
 };
 
 /** Serialized Transfer with Decimal fields converted to number */
-export type Transfer = Omit<PrismaTransfer, "amount"> & {
+export type Transfer = Omit<PrismaTransfer, "amount" | "rate"> & {
   amount: number;
+  rate: number | null;
   fromAccount?: Account;
   toAccount?: Account;
 };

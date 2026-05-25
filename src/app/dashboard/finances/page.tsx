@@ -10,10 +10,17 @@ export default async function FinancesPage() {
   const month = now.getMonth() + 1;
 
   void queryClient.prefetchQuery(
-    trpc.finances.overview.periodSummary.queryOptions({ year, month }),
+    trpc.finances.overview.periodSummary.queryOptions({
+      year,
+      month,
+      currency: "PEN",
+    }),
   );
   void queryClient.prefetchQuery(
-    trpc.finances.overview.monthlySummary.queryOptions({ year }),
+    trpc.finances.overview.monthlySummary.queryOptions({
+      year,
+      currency: "PEN",
+    }),
   );
 
   return (

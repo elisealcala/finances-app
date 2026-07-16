@@ -134,6 +134,7 @@ export const accountRouter = router({
           apr: input.apr != null ? new Prisma.Decimal(input.apr) : null,
           billingDay: input.billingDay ?? null,
           paymentDueDay: input.paymentDueDay ?? null,
+          cardLast4: input.cardLast4 ?? null,
           secondaryCurrency: input.secondaryCurrency ?? null,
           defaultPayingAccountId: input.defaultPayingAccountId ?? null,
           debtId,
@@ -170,6 +171,7 @@ export const accountRouter = router({
       if (data.billingDay !== undefined) updateData.billingDay = data.billingDay;
       if (data.paymentDueDay !== undefined)
         updateData.paymentDueDay = data.paymentDueDay;
+      if (data.cardLast4 !== undefined) updateData.cardLast4 = data.cardLast4;
       if (data.secondaryCurrency !== undefined)
         updateData.secondaryCurrency = data.secondaryCurrency;
       if (data.defaultPayingAccountId !== undefined)

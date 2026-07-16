@@ -204,6 +204,7 @@ model Account {
   apr                    Decimal?    @db.Decimal(5, 2)
   billingDay             Int?        @map("billing_day")
   paymentDueDay          Int?        @map("payment_due_day")
+  cardLast4              String?     @map("card_last_4") @db.VarChar(4)
   defaultPayingAccountId String?     @map("default_paying_account_id")
   debtId                 String?     @unique @map("debt_id")
   createdAt              DateTime    @default(now()) @map("created_at")
@@ -220,7 +221,9 @@ model Account {
   recurringTransactions RecurringTransaction[]
   fundingFrom           FundingLink[]
   statements            CreditCardStatement[]
+  pendingImports        PendingImport[]
 
+  @@index([cardLast4])
   @@map("accounts")
 }
 
@@ -302,7 +305,6 @@ model CreditCardStatement {
   account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   expenses Expense[]
 
-  @@unique([accountId, month, year])
   @@index([accountId])
   @@map("credit_card_statements")
 }
@@ -325,4 +327,161 @@ model Transfer {
 
   @@index([date])
   @@map("transfers")
+}
+
+// ============================================
+// HEALTH MODULE
+// ============================================
+
+enum AttachmentKind {
+  RECEIPT
+  ANALYSIS
+  OTHER
+}
+
+model DoctorAppointment {
+  id         String   @id @default(cuid())
+  date       DateTime
+  specialty  String
+  doctorName String?  @map("doctor_name")
+  cost       Decimal? @db.Decimal(10, 2)
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  medications Medication[]
+  attachments Attachment[]
+
+  @@index([date])
+  @@map("doctor_appointments")
+}
+
+model Medication {
+  id            String  @id @default(cuid())
+  name          String
+  dosage        String?
+  frequency     String?
+  appointmentId String  @map("appointment_id")
+
+  appointment DoctorAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("medications")
+}
+
+model Attachment {
+  id            String         @id @default(cuid())
+  url           String
+  filename      String
+  mimeType      String         @map("mime_type")
+  size          Int?
+  kind          AttachmentKind @default(OTHER)
+  appointmentId String?        @map("appointment_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  appointment DoctorAppointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@map("attachments")
+}
+
+// ============================================
+// EMAIL IMPORTS MODULE
+// ============================================
+
+enum PendingImportStatus {
+  PENDING
+  IMPORTED
+  DISMISSED
+}
+
+model GmailCredential {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  accessToken     String    @map("access_token") @db.Text
+  refreshToken    String    @map("refresh_token") @db.Text
+  expiresAt       DateTime  @map("expires_at")
+  pollWindowDays  Int       @default(7) @map("poll_window_days")
+  lastPolledAt    DateTime? @map("last_polled_at")
+  lastPollResult  Json?     @map("last_poll_result") @db.Json
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("gmail_credentials")
+}
+
+model PendingImport {
+  id                String              @id @default(cuid())
+  bank              String
+  emailMessageId    String              @unique @map("email_message_id")
+  emailDate         DateTime            @map("email_date")
+  rawSubject        String              @map("raw_subject")
+  rawSnippet        String?             @map("raw_snippet") @db.Text
+  merchant          String
+  amount            Decimal             @db.Decimal(12, 2)
+  currency          Currency
+  transactionDate   DateTime            @map("transaction_date")
+  cardLast4         String?             @map("card_last_4") @db.VarChar(4)
+  accountId         String?             @map("account_id")
+  matchWarning      String?             @map("match_warning")
+  status            PendingImportStatus @default(PENDING)
+  importedExpenseId String?             @map("imported_expense_id")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([emailDate])
+  @@map("pending_imports")
+}
+
+// ============================================
+// NOTES MODULE
+// ============================================
+
+model Note {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  title     String?
+  content   Json     @db.Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([date])
+  @@map("notes")
+}
+
+// ============================================
+// TELEGRAM ASSISTANT MODULE
+// ============================================
+
+enum AssistantRole {
+  USER
+  ASSISTANT
+}
+
+model AssistantMessage {
+  id        String        @id @default(cuid())
+  chatId    String        @map("chat_id")
+  role      AssistantRole
+  content   String        @db.Text
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([chatId, createdAt])
+  @@map("assistant_messages")
+}
+
+model AssistantAlertLog {
+  id        String   @id @default(cuid())
+  alertKey  String   @map("alert_key")
+  periodKey String   @map("period_key")
+  severity  String
+  title     String
+  message   String   @db.Text
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@unique([alertKey, periodKey])
+  @@index([sentAt])
+  @@map("assistant_alert_logs")
 }

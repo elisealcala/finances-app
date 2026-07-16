@@ -9,6 +9,7 @@ import {
   deleteExpenseSchema,
   markExpensePaidSchema,
 } from "@/server/trpc/schemas/finances.schema";
+import { createExpenseInternal } from "@/server/trpc/services/finances/expense";
 
 function serializeExpense(expense: PrismaExpense & { account?: Record<string, unknown>; category?: Record<string, unknown> | null }) {
   return {
@@ -83,56 +84,7 @@ export const expenseRouter = router({
   create: publicProcedure
     .input(createExpenseSchema)
     .mutation(async ({ ctx, input }) => {
-      // Auto-set NOT_PAID for credit card accounts
-      let paymentStatus = input.paymentStatus ?? "PAID";
-      const account = await ctx.db.account.findUnique({
-        where: { id: input.accountId },
-        select: { type: true, currency: true, defaultPayingAccountId: true },
-      });
-
-      if (paymentStatus === "PAID" && account?.type === "CREDIT_CARD") {
-        paymentStatus = "NOT_PAID";
-      }
-
-      // Auto-fill payingAccountId from account's default if not provided
-      const payingAccountId =
-        input.payingAccountId ??
-        (account?.type === "CREDIT_CARD"
-          ? account.defaultPayingAccountId
-          : null);
-
-      // Auto-populate paymentDueDate from statement if linked
-      let paymentDueDate = input.paymentDueDate ?? null;
-      if (input.statementId && !paymentDueDate) {
-        const statement = await ctx.db.creditCardStatement.findUnique({
-          where: { id: input.statementId },
-          select: { paymentDueDate: true },
-        });
-        if (statement) {
-          paymentDueDate = statement.paymentDueDate;
-        }
-      }
-
-      const expense = await ctx.db.expense.create({
-        data: {
-          name: input.name,
-          amount: new Prisma.Decimal(input.amount),
-          date: input.date,
-          paymentStatus,
-          currency: input.currency ?? null,
-          notes: input.notes ?? null,
-          accountId: input.accountId,
-          categoryId: input.categoryId ?? null,
-          payingAccountId,
-          paymentDueDate,
-          statementId: input.statementId ?? null,
-        },
-        include: {
-          account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-          category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
-          payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
-        },
-      });
+      const expense = await createExpenseInternal(ctx.db, input);
       return serializeExpense(expense);
     }),
 

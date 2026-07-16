@@ -39,6 +39,11 @@ export const createAccountSchema = z.object({
   apr: z.number().min(0).max(100).nullable().optional(),
   billingDay: z.number().int().min(1).max(31).nullable().optional(),
   paymentDueDay: z.number().int().min(1).max(31).nullable().optional(),
+  cardLast4: z
+    .string()
+    .regex(/^\d{4}$/, "Must be exactly 4 digits")
+    .nullable()
+    .optional(),
   secondaryCurrency: currencySchema.nullable().optional(),
   defaultPayingAccountId: z.string().cuid().nullable().optional(),
   linkToDebt: z.boolean().optional().default(false),
@@ -165,6 +170,12 @@ export const listIncomesSchema = z
     categoryId: z.string().cuid().optional(),
     sortBy: z.enum(["name", "amount", "date", "createdAt"]).optional(),
     sortOrder: z.enum(["asc", "desc"]).optional(),
+  })
+  .optional();
+
+export const incomeCategorySummarySchema = z
+  .object({
+    accountId: z.string().cuid().optional(),
   })
   .optional();
 
@@ -305,6 +316,9 @@ export type ListExpensesInput = z.infer<typeof listExpensesSchema>;
 export type CreateIncomeInput = z.infer<typeof createIncomeSchema>;
 export type UpdateIncomeInput = z.infer<typeof updateIncomeSchema>;
 export type ListIncomesInput = z.infer<typeof listIncomesSchema>;
+export type IncomeCategorySummaryInput = z.infer<
+  typeof incomeCategorySummarySchema
+>;
 
 export type CreateTransferInput = z.infer<typeof createTransferSchema>;
 export type UpdateTransferInput = z.infer<typeof updateTransferSchema>;

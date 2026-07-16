@@ -25,6 +25,17 @@ export type EChartTooltipParam = {
   data: unknown;
 };
 
+export type EChartClickParam = {
+  componentType?: string;
+  seriesType?: string;
+  seriesIndex?: number;
+  dataIndex?: number;
+  name?: string;
+  value?: unknown;
+  color?: string;
+  data?: unknown;
+};
+
 type EChartProps = {
   option: EChartsOption;
   className?: string;
@@ -42,6 +53,7 @@ type EChartProps = {
    * Useful for rendering live sidebars / legends synced to hover.
    */
   onAxisHover?: (params: EChartTooltipParam[] | null) => void;
+  onClick?: (params: EChartClickParam) => void;
   notMerge?: boolean;
   onReady?: (chart: EChartsInstance) => void;
 };
@@ -52,6 +64,7 @@ export function EChart({
   style,
   tooltip,
   onAxisHover,
+  onClick,
   notMerge = true,
   onReady,
 }: EChartProps) {
@@ -61,6 +74,8 @@ export function EChart({
   tooltipRef.current = tooltip;
   const onAxisHoverRef = React.useRef(onAxisHover);
   onAxisHoverRef.current = onAxisHover;
+  const onClickRef = React.useRef(onClick);
+  onClickRef.current = onClick;
 
   const [tip, setTip] = React.useState<{
     params: EChartTooltipParam[];
@@ -95,13 +110,18 @@ export function EChart({
       setTip(null);
       onAxisHoverRef.current?.(null);
     };
+    const onChartClick = (params: unknown) => {
+      onClickRef.current?.(params as EChartClickParam);
+    };
     zr.on("mousemove", onMove);
     zr.on("globalout", onOut);
+    chart.on("click", onChartClick);
 
     return () => {
       ro.disconnect();
       zr.off("mousemove", onMove);
       zr.off("globalout", onOut);
+      chart.off("click", onChartClick);
       chart.dispose();
       chartRef.current = null;
     };

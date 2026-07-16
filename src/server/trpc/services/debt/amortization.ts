@@ -307,6 +307,88 @@ export function generateTimeline(
   return { rows, paymentMarkers };
 }
 
+export type PayoffMilestone = {
+  debtId: string;
+  debtName: string;
+  payoffMonthLabel: string; // "Oct 2026" ("" when never paid off)
+  payoffDate: string; // ISO ("" when never paid off)
+  monthsFromNow: number; // whole months from referenceDate (Infinity when never)
+  neverAtCurrentPace: boolean; // payment doesn't cover interest
+};
+
+/** Derive per-debt payoff milestones from generated timeline rows.
+ *  Walks each active debt's balance forward from the current month and records
+ *  the first month it reaches zero. Debts whose payment can't cover interest are
+ *  flagged `neverAtCurrentPace`. Returned sorted ascending by payoff date so the
+ *  chart markers and the payoff-schedule rail agree exactly. */
+export function getPayoffMilestones(
+  debts: Debt[],
+  rows: TimelineRow[],
+  referenceDate: Date = new Date(),
+): PayoffMilestone[] {
+  const currentMonthStart = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    1,
+  );
+  const futureRows = rows.filter(
+    (row) => new Date(row.date as string) >= currentMonthStart,
+  );
+
+  const milestones: PayoffMilestone[] = [];
+
+  for (const debt of debts) {
+    if (debt.status === "PAID_OFF") continue;
+
+    const rate = teaToMonthlyRate(debt.interestRate);
+    const effPayment = debt.minimumPayment - totalMonthlyFees(debt.fees);
+
+    if (!isFinite(monthsUntilPaidOff(debt.balance, rate, effPayment))) {
+      milestones.push({
+        debtId: debt.id,
+        debtName: debt.name,
+        payoffMonthLabel: "",
+        payoffDate: "",
+        monthsFromNow: Infinity,
+        neverAtCurrentPace: true,
+      });
+      continue;
+    }
+
+    let hasStarted = false;
+    for (const row of futureRows) {
+      const bal = Number((row as Record<string, unknown>)[debt.id]) || 0;
+      if (!hasStarted) {
+        if (bal > 0) hasStarted = true;
+        continue;
+      }
+      if (bal <= 0) {
+        const date = new Date(row.date as string);
+        milestones.push({
+          debtId: debt.id,
+          debtName: debt.name,
+          payoffMonthLabel: row.monthLabel as string,
+          payoffDate: row.date as string,
+          monthsFromNow: Math.max(
+            0,
+            differenceInCalendarMonths(date, referenceDate),
+          ),
+          neverAtCurrentPace: false,
+        });
+        break;
+      }
+    }
+  }
+
+  milestones.sort((a, b) => {
+    if (a.neverAtCurrentPace) return 1;
+    if (b.neverAtCurrentPace) return -1;
+    return new Date(a.payoffDate).getTime() - new Date(b.payoffDate).getTime();
+  });
+
+  return milestones;
+}
+
 /** Generate timeline rows from installment schedule data (for scheduled debts).
  *  Returns a simple month-by-month balance projection based on installment capital. */
 export function generateScheduleTimeline(

@@ -46,6 +46,7 @@ export function CategoryForm({
   const isEditing = !!category;
   const isPending = createCategory.isPending || updateCategory.isPending;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset controlled dialog fields when the selected category changes */
   useEffect(() => {
     if (category) {
       setForm({
@@ -60,6 +61,7 @@ export function CategoryForm({
     }
     setErrors({});
   }, [category, open]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {};

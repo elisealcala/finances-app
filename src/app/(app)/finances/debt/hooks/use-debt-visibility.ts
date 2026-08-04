@@ -8,6 +8,7 @@ export function useDebtVisibility(debts: Debt[]) {
   const initializedRef = useRef(false);
 
   // Auto-hide paid-off debts on first data load
+  /* eslint-disable react-hooks/set-state-in-effect -- initialize hidden state after asynchronous debt data arrives */
   useEffect(() => {
     if (initializedRef.current || debts.length === 0) return;
     initializedRef.current = true;
@@ -18,6 +19,7 @@ export function useDebtVisibility(debts: Debt[]) {
       setHiddenIds(new Set(paidOff));
     }
   }, [debts]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const toggleVisibility = useCallback((debtId: string) => {
     setHiddenIds((prev) => {

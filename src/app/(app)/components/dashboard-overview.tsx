@@ -8,13 +8,10 @@ import {
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  Shield,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useDebts } from "@/hooks/use-debts";
 import { usePeriodSummary } from "@/hooks/use-overview";
-import { useAvailableBalances } from "@/hooks/use-projection";
-import { AlertBanner } from "../finances/predictions/components/alert-banner";
 import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/page";
 
@@ -25,30 +22,23 @@ export function DashboardOverview() {
     now.getFullYear(),
     now.getMonth() + 1,
   );
-  const { data: availableData } = useAvailableBalances();
-
   const totalDebt = debtData?.summary?.totalDebt ?? 0;
   const activeDebts = debtData?.summary?.activeCount ?? 0;
   const totalIncome = periodData?.totalIncome ?? 0;
   const totalExpenses = periodData?.totalExpenses ?? 0;
   const savings = periodData?.savings ?? 0;
-  const totalAvailable = availableData?.reduce((sum, a) => sum + a.available, 0) ?? 0;
-  const totalBalance = availableData?.reduce((sum, a) => sum + a.balance, 0) ?? 0;
-
   const isLoading = !debtData && !periodData;
 
   return (
     <PageShell>
       <PageHeader
         title="Dashboard"
-        description="Your finances, obligations, and available balance at a glance."
+        description="Your finances and obligations at a glance."
       />
-
-      <AlertBanner />
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -129,23 +119,6 @@ export function DashboardOverview() {
                   {formatCurrency(savings)}
                 </div>
                 <p className="text-muted-foreground text-xs">This month</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/finances/predictions">
-            <Card className="transition-colors hover:border-primary/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available</CardTitle>
-                <Shield className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(totalAvailable)}
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  of {formatCurrency(totalBalance)} total balance
-                </p>
               </CardContent>
             </Card>
           </Link>

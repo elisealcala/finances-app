@@ -18,7 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, formatCurrency, DEBT_TYPE_LABELS } from "@/lib/utils";
 import { useCreateDebt } from "@/hooks/use-debts";
-import { useAccounts } from "@/hooks/use-accounts";
 import { DEBT_COLOR_PALETTE } from "@/server/trpc/services/debt/colors";
 import { generateEqualPaymentSchedule } from "@/server/trpc/services/debt/schedule";
 import { EditableScheduleTable, type ScheduleRow } from "./schedule-table";
@@ -50,7 +49,6 @@ const YEARS = Array.from({ length: currentYear - 2020 + 2 }, (_, i) => 2020 + i)
 export function DebtCreatePage() {
   const router = useRouter();
   const createDebt = useCreateDebt();
-  const { data: accountsData } = useAccounts();
 
   // Debt details
   const [name, setName] = useState("");
@@ -63,9 +61,6 @@ export function DebtCreatePage() {
   const [color, setColor] = useState<string | null>(null);
   const [startedMonth, setStartedMonth] = useState("");
   const [startedYear, setStartedYear] = useState("");
-
-  // Funding account
-  const [fundingAccountId, setFundingAccountId] = useState<string | null>(null);
 
   // Schedule
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("none");
@@ -221,7 +216,6 @@ export function DebtCreatePage() {
       startedAt: startedAt ?? null,
       status: "ACTIVE",
       fees: feesPayload,
-      fundingAccountId,
       hasSchedule,
       termMonths: hasSchedule ? installments.length : null,
       installments: hasSchedule
@@ -400,28 +394,6 @@ export function DebtCreatePage() {
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="fundingAccount">Funding Account</Label>
-            <p className="text-muted-foreground text-xs">
-              Which account will fund payments for this debt?
-            </p>
-            <Select
-              value={fundingAccountId ?? "none"}
-              onValueChange={(v) => setFundingAccountId(v === "none" ? null : v)}
-            >
-              <SelectTrigger id="fundingAccount">
-                <SelectValue placeholder="None (set up later)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {accountsData?.accounts?.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 

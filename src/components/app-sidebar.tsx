@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Home,
   Wallet,
@@ -39,9 +40,6 @@ const navItems = [
       { title: "Debt", url: "/finances/debt" },
       { title: "Budget", url: "/finances/budget" },
       { title: "Categories", url: "/finances/categories" },
-      { title: "Predictions", url: "/finances/predictions" },
-      { title: "Recurring", url: "/finances/recurring" },
-      { title: "Imports", url: "/finances/imports" },
     ],
   },
   {
@@ -63,7 +61,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="/">
+              <Link href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 via-rose-500 to-fuchsia-600 text-white shadow-sm shadow-rose-500/15">
                   <Sparkles className="size-4" />
                 </div>
@@ -73,7 +71,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     Personal hub
                   </span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

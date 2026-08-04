@@ -11,7 +11,7 @@ export function isValidWebhookSecret(headerValue: string | null): boolean {
 }
 
 // The app has no auth system; a single allow-listed chat id is the whole
-// authorization model (analogous to the CRON_SECRET check on cron routes).
+// authorization model used by the webhook route.
 export function isAllowedChat(chatId: number | string): boolean {
   return (
     Boolean(env.TELEGRAM_ALLOWED_CHAT_ID) &&

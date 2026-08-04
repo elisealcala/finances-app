@@ -47,12 +47,14 @@ export function SetBudgetDialog({
     [categories, budgetedCategoryIds],
   );
 
+  /* eslint-disable react-hooks/set-state-in-effect -- clear controlled dialog fields on open */
   useEffect(() => {
     if (open) {
       setSelectedCategoryId("");
       setBudget("");
     }
   }, [open]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

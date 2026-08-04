@@ -61,6 +61,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
   const isEditing = !!income;
   const isPending = createIncome.isPending || updateIncome.isPending;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset controlled dialog fields when the selected income changes */
   useEffect(() => {
     if (income) {
       const d = new Date(income.date);
@@ -96,6 +97,7 @@ export function IncomeForm({ open, onOpenChange, income }: IncomeFormProps) {
       }));
     }
   }, [accounts, income, form.accountId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleAccountChange(accountId: string) {
     const account = accounts.find((a) => a.id === accountId);

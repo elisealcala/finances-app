@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -72,17 +72,15 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
   const isCreditCard = selectedAccount?.type === "CREDIT_CARD";
 
   // Currency options for dual-currency cards
-  const currencyOptions = useMemo(() => {
-    if (!isCreditCard || !selectedAccount) return [];
-    const options = [selectedAccount.currency];
-    if (
-      selectedAccount.secondaryCurrency &&
-      selectedAccount.secondaryCurrency !== selectedAccount.currency
-    ) {
-      options.push(selectedAccount.secondaryCurrency);
-    }
-    return options;
-  }, [isCreditCard, selectedAccount]);
+  const currencyOptions = !isCreditCard || !selectedAccount
+    ? []
+    : [
+        selectedAccount.currency,
+        ...(selectedAccount.secondaryCurrency &&
+        selectedAccount.secondaryCurrency !== selectedAccount.currency
+          ? [selectedAccount.secondaryCurrency]
+          : []),
+      ];
 
   // Non-credit-card accounts for paying account selector
   const payingAccounts = accounts.filter((a) => a.type !== "CREDIT_CARD");
@@ -95,6 +93,7 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
   );
   const openStatements = statementsData?.statements ?? [];
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset controlled dialog fields when the selected expense changes */
   useEffect(() => {
     if (expense) {
       const d = new Date(expense.date);
@@ -135,6 +134,7 @@ export function ExpenseForm({ open, onOpenChange, expense }: ExpenseFormProps) {
       setForm((prev) => ({ ...prev, accountId: accounts[0].id }));
     }
   }, [accounts, expense, form.accountId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {};

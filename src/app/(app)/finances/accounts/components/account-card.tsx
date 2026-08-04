@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2, CreditCard, Landmark, Wallet, PiggyBank, TrendingUp, HelpCircle } from "lucide-react";
 import { formatCurrency, ACCOUNT_TYPE_LABELS } from "@/lib/utils";
-import { useAvailableBalances } from "@/hooks/use-projection";
 import type { AccountWithBalance } from "@/types/finances";
 
 const ACCOUNT_ICONS: Record<string, typeof Landmark> = {
@@ -31,12 +30,6 @@ type AccountCardProps = {
 
 export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
   const Icon = ACCOUNT_ICONS[account.type] ?? HelpCircle;
-  const { data: availableBalances } = useAvailableBalances();
-  const accountAvailable = availableBalances?.find(
-    (a) => a.accountId === account.id,
-  );
-  const showAvailable =
-    accountAvailable && Math.abs(accountAvailable.available - account.balance) > 0.01;
 
   return (
     <Card>
@@ -89,14 +82,6 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
                 {formatCurrency(amt, cur as "PEN" | "USD" | "EUR")}
               </div>
             ))}
-        {showAvailable && (
-          <div className="text-muted-foreground text-sm">
-            Available:{" "}
-            <span className={accountAvailable.available < 0 ? "text-destructive" : ""}>
-              {formatCurrency(accountAvailable.available, account.currency)}
-            </span>
-          </div>
-        )}
         <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
           <Badge variant="secondary" className="text-xs">
             {ACCOUNT_TYPE_LABELS[account.type] ?? account.type}

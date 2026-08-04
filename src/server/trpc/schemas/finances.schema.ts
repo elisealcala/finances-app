@@ -39,11 +39,6 @@ export const createAccountSchema = z.object({
   apr: z.number().min(0).max(100).nullable().optional(),
   billingDay: z.number().int().min(1).max(31).nullable().optional(),
   paymentDueDay: z.number().int().min(1).max(31).nullable().optional(),
-  cardLast4: z
-    .string()
-    .regex(/^\d{4}$/, "Must be exactly 4 digits")
-    .nullable()
-    .optional(),
   secondaryCurrency: currencySchema.nullable().optional(),
   defaultPayingAccountId: z.string().cuid().nullable().optional(),
   linkToDebt: z.boolean().optional().default(false),

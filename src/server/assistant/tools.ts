@@ -94,18 +94,6 @@ export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
       },
     },
   },
-  {
-    name: "get_available_balance",
-    description:
-      "Get how much is actually available to spend per account after committed upcoming obligations (debt payments, recurring bills). Call this when the user asks how much they can safely spend.",
-    input_schema: { type: "object", properties: {} },
-  },
-  {
-    name: "get_financial_alerts",
-    description:
-      "Get current financial alerts: negative balances, tight margins, budgets near or over their limit, and upcoming debt payments. Call this when the user asks if anything needs attention or why an account is tight.",
-    input_schema: { type: "object", properties: {} },
-  },
 ];
 
 export async function dispatchTool(
@@ -243,20 +231,6 @@ export async function dispatchTool(
       };
     }
 
-    case "get_available_balance": {
-      const balances = await caller.prediction.projection.availableBalances();
-      return balances.map((ab) => ({
-        account: ab.accountName,
-        currency: ab.currency,
-        balance: ab.balance,
-        committed: ab.committed,
-        available: ab.available,
-      }));
-    }
-
-    case "get_financial_alerts": {
-      return caller.prediction.projection.alerts();
-    }
   }
 
   throw new Error(`Unknown tool: ${name}`);

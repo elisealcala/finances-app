@@ -44,7 +44,6 @@ const INITIAL_STATE: CreateAccountInput = {
   apr: null,
   billingDay: null,
   paymentDueDay: null,
-  cardLast4: null,
   secondaryCurrency: null,
   defaultPayingAccountId: null,
   linkToDebt: false,
@@ -66,6 +65,7 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
   const isPending = createAccount.isPending || updateAccount.isPending;
   const isCreditCard = form.type === "CREDIT_CARD";
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset controlled dialog fields when the selected account changes */
   useEffect(() => {
     if (account) {
       setForm({
@@ -80,7 +80,6 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
         apr: account.apr,
         billingDay: account.billingDay,
         paymentDueDay: account.paymentDueDay,
-        cardLast4: account.cardLast4 ?? null,
         secondaryCurrency: account.secondaryCurrency ?? null,
         defaultPayingAccountId: account.defaultPayingAccountId ?? null,
         linkToDebt: false,
@@ -90,6 +89,7 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
     }
     setErrors({});
   }, [account, open]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {};
@@ -204,29 +204,6 @@ export function AccountForm({ open, onOpenChange, account }: AccountFormProps) {
                 }
               />
             </div>
-
-            {(form.type === "CREDIT_CARD" ||
-              form.type === "BANK" ||
-              form.type === "SAVINGS") && (
-              <div className="grid gap-2">
-                <Label htmlFor="cardLast4">Card last 4 digits</Label>
-                <Input
-                  id="cardLast4"
-                  inputMode="numeric"
-                  maxLength={4}
-                  pattern="\d{4}"
-                  value={form.cardLast4 ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    setForm({ ...form, cardLast4: v || null });
-                  }}
-                  placeholder="e.g. 5986"
-                />
-                <p className="text-muted-foreground text-xs">
-                  Used to match bank email notifications to this account.
-                </p>
-              </div>
-            )}
 
             {isCreditCard && (
               <>

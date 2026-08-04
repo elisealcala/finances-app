@@ -65,6 +65,24 @@ export function StatementForm({
   // Get selected account for pre-filling dates
   const selectedAccount = creditCardAccounts.find((a) => a.id === accountId);
 
+  function prefillDates(accId: string, m: number, y: number) {
+    const acc = creditCardAccounts.find((a) => a.id === accId);
+    if (acc?.billingDay) {
+      const bd = new Date(y, m - 1, acc.billingDay);
+      setBillingCloseDateStr(bd.toISOString().split("T")[0]);
+    } else {
+      setBillingCloseDateStr("");
+    }
+    if (acc?.paymentDueDay) {
+      // Payment due is typically in the month after billing
+      const pd = new Date(y, m, acc.paymentDueDay);
+      setPaymentDueDateStr(pd.toISOString().split("T")[0]);
+    } else {
+      setPaymentDueDateStr("");
+    }
+  }
+
+  /* eslint-disable react-hooks/set-state-in-effect -- reset controlled dialog fields when the selected statement changes */
   useEffect(() => {
     if (statement) {
       setAccountId(statement.accountId);
@@ -82,28 +100,11 @@ export function StatementForm({
       setMonth(now.getMonth() + 1);
       setYear(now.getFullYear());
       setNotes("");
-      // Pre-fill dates from account defaults
       prefillDates(defaultAccountId ?? "", now.getMonth() + 1, now.getFullYear());
     }
     setErrors({});
   }, [statement, open, defaultAccountId]);
-
-  function prefillDates(accId: string, m: number, y: number) {
-    const acc = creditCardAccounts.find((a) => a.id === accId);
-    if (acc?.billingDay) {
-      const bd = new Date(y, m - 1, acc.billingDay);
-      setBillingCloseDateStr(bd.toISOString().split("T")[0]);
-    } else {
-      setBillingCloseDateStr("");
-    }
-    if (acc?.paymentDueDay) {
-      // Payment due is typically in the month after billing
-      const pd = new Date(y, m, acc.paymentDueDay);
-      setPaymentDueDateStr(pd.toISOString().split("T")[0]);
-    } else {
-      setPaymentDueDateStr("");
-    }
-  }
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleAccountChange(accId: string) {
     setAccountId(accId);

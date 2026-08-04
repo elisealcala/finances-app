@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,15 +56,11 @@ export function AccountsPageClient() {
     updateAccount.mutate({ id: account.id, isArchived: !account.isArchived });
   }
 
-  const columns = useMemo(
-    () =>
-      getAccountColumns({
-        onEdit: handleEdit,
-        onDelete: setDeletingAccount,
-        onToggleArchive: handleToggleArchive,
-      }),
-    [],
-  );
+  const columns = getAccountColumns({
+    onEdit: handleEdit,
+    onDelete: setDeletingAccount,
+    onToggleArchive: handleToggleArchive,
+  });
 
   return (
     <PageShell>

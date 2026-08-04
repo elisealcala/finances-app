@@ -1,4 +1,5 @@
 import { NoteEditPage } from "../components/note-edit";
+import { PageShell } from "@/components/page";
 
 export default async function NoteDetailPage({
   params,
@@ -7,8 +8,8 @@ export default async function NoteDetailPage({
 }) {
   const { id } = await params;
   return (
-    <div className="mx-auto max-w-3xl">
+    <PageShell width="narrow">
       <NoteEditPage id={id} />
-    </div>
+    </PageShell>
   );
 }

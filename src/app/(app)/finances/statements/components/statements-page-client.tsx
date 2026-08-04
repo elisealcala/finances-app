@@ -30,6 +30,7 @@ import { getStatementColumns } from "./statement-columns";
 import { StatementForm } from "./statement-form";
 import { PayStatementDialog } from "./pay-statement-dialog";
 import type { CreditCardStatement } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 type StatementRow = CreditCardStatement & {
   account?: { name: string; currency: string; color: string | null };
@@ -106,19 +107,17 @@ export function StatementsPageClient() {
   const paidCount = allStatements.filter((s) => s.status === "PAID").length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Statements</h2>
-          <p className="text-muted-foreground">
-            Manage credit card billing statements.
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Statement
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Statements"
+        description="Manage credit-card billing periods, balances, and payments."
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add statement
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
@@ -217,6 +216,6 @@ export function StatementsPageClient() {
         onOpenChange={(open) => !open && setPayingStatement(null)}
         statement={payingStatement}
       />
-    </div>
+    </PageShell>
   );
 }

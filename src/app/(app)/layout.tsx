@@ -1,6 +1,6 @@
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Separator } from "@/components/ui/separator";
+import { AppHeader } from "@/components/app-header";
 
 export default function AppLayout({
   children,
@@ -11,12 +11,13 @@ export default function AppLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-sm font-medium">Hub</h1>
-        </header>
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <AppHeader />
+        <main
+          data-slot="app-content"
+          className="flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+        >
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

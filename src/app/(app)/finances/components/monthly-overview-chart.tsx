@@ -29,9 +29,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CURRENCY_LABELS, MONTHS, formatCurrency } from "@/lib/utils";
 import type { MonthlySummaryItem } from "@/types/finances";
 
-const INCOME_COLOR = "#16a34a";
-const EXPENSES_COLOR = "#dc2626";
-const SAVINGS_COLOR = "#2563eb";
+const INCOME_COLOR = "#4f8067";
+const EXPENSES_COLOR = "#b45f5b";
+const SAVINGS_COLOR = "#58789b";
 const DEFAULT_PEN_PER_USD = "3.70";
 
 type Currency = "PEN" | "USD" | "EUR";
@@ -119,7 +119,7 @@ function MonthlyTooltip({
   const ytdSavings = ytdIncome - ytdExpenses;
 
   return (
-    <div className="border-border/50 bg-background min-w-[260px] rounded-lg border px-4 py-3 text-sm shadow-xl">
+    <div className="border-border bg-popover min-w-[260px] rounded-xl border px-4 py-3 text-sm shadow-lg shadow-black/8">
       <div className="mb-2 text-base font-semibold">
         {MONTHS[row.month - 1]} {year}
       </div>

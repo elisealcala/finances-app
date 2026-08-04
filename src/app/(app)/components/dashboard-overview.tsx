@@ -16,6 +16,7 @@ import { usePeriodSummary } from "@/hooks/use-overview";
 import { useAvailableBalances } from "@/hooks/use-projection";
 import { AlertBanner } from "../finances/predictions/components/alert-banner";
 import Link from "next/link";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function DashboardOverview() {
   const now = new Date();
@@ -37,13 +38,11 @@ export function DashboardOverview() {
   const isLoading = !debtData && !periodData;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome to your personal finance tracker.
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Dashboard"
+        description="Your finances, obligations, and available balance at a glance."
+      />
 
       <AlertBanner />
 
@@ -92,7 +91,7 @@ export function DashboardOverview() {
                 <TrendingUp className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-positive text-2xl font-semibold tracking-[-0.025em]">
                   {formatCurrency(totalIncome)}
                 </div>
                 <p className="text-muted-foreground text-xs">This month</p>
@@ -109,7 +108,7 @@ export function DashboardOverview() {
                 <TrendingDown className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-destructive text-2xl font-semibold tracking-[-0.025em]">
                   {formatCurrency(totalExpenses)}
                 </div>
                 <p className="text-muted-foreground text-xs">This month</p>
@@ -125,7 +124,7 @@ export function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div
-                  className={`text-2xl font-bold ${savings >= 0 ? "text-green-600" : "text-red-600"}`}
+                  className={`text-2xl font-semibold tracking-[-0.025em] ${savings >= 0 ? "text-positive" : "text-destructive"}`}
                 >
                   {formatCurrency(savings)}
                 </div>
@@ -169,6 +168,6 @@ export function DashboardOverview() {
           </Link>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -76,7 +76,7 @@ export function getBudgetColumns({
         </Button>
       ),
       cell: ({ row }) => (
-        <span className="font-mono tabular-nums text-red-500">
+        <span className="text-destructive font-mono tabular-nums">
           {formatCurrency(row.getValue("grossSpent"))}
         </span>
       ),
@@ -98,7 +98,7 @@ export function getBudgetColumns({
       cell: ({ row }) => {
         const income = row.getValue("categoryIncome") as number;
         return (
-          <span className={`font-mono tabular-nums ${income > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+          <span className={`font-mono tabular-nums ${income > 0 ? "text-positive" : "text-muted-foreground"}`}>
             {formatCurrency(income)}
           </span>
         );
@@ -142,7 +142,7 @@ export function getBudgetColumns({
         const remaining = row.getValue("remaining") as number;
         return (
           <span
-            className={`font-mono tabular-nums ${remaining < 0 ? "text-red-500" : "text-green-600"}`}
+            className={`font-mono tabular-nums ${remaining < 0 ? "text-destructive" : "text-positive"}`}
           >
             {formatCurrency(remaining)}
           </span>
@@ -161,10 +161,10 @@ export function getBudgetColumns({
               value={Math.min(percent, 100)}
               className={`h-2 w-24 ${
                 percent > 100
-                  ? "[&>div]:bg-red-500"
+                  ? "[&>div]:bg-destructive"
                   : percent > 80
-                    ? "[&>div]:bg-yellow-500"
-                    : "[&>div]:bg-green-500"
+                    ? "[&>div]:bg-warning"
+                    : "[&>div]:bg-positive"
               }`}
             />
             <span className="text-muted-foreground font-mono text-xs tabular-nums">
@@ -183,12 +183,12 @@ export function getBudgetColumns({
       cell: ({ row }) => {
         const percent = row.original.percentUsed;
         if (percent > 100) {
-          return <span className="text-sm font-medium text-red-500">Over Budget</span>;
+          return <span className="text-destructive text-sm font-medium">Over budget</span>;
         }
         if (percent > 80) {
-          return <span className="text-sm font-medium text-yellow-600">Warning</span>;
+          return <span className="text-warning text-sm font-medium">Warning</span>;
         }
-        return <span className="text-sm font-medium text-green-600">On Track</span>;
+        return <span className="text-positive text-sm font-medium">On track</span>;
       },
       meta: { filterType: "select" as const },
     },

@@ -64,11 +64,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 via-rose-500 to-fuchsia-600 text-white shadow-sm shadow-rose-500/15">
                   <Sparkles className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Hub</span>
+                  <span className="truncate font-semibold tracking-[-0.02em]">Hub</span>
                   <span className="text-muted-foreground truncate text-xs">
                     Personal hub
                   </span>
@@ -79,9 +79,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label="Menu" items={navItems} />
+        <NavMain label="Overview" items={navItems.slice(0, 1)} />
+        <NavMain label="Money" items={navItems.slice(1, 2)} />
+        <NavMain label="Personal" items={navItems.slice(2)} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-sidebar-border border-t p-3">
         <ThemeToggle />
       </SidebarFooter>
     </Sidebar>

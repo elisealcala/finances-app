@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAppointments } from "@/hooks/use-health";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function HealthPageClient() {
   const [from, setFrom] = useState<string>("");
@@ -40,20 +41,18 @@ export function HealthPageClient() {
   }, [data]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Health</h2>
-          <p className="text-muted-foreground text-sm">
-            Doctor appointments, medications, and records.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/health/new">
-            <Plus className="size-4" /> New appointment
-          </Link>
-        </Button>
-      </div>
+    <PageShell width="medium">
+      <PageHeader
+        title="Health"
+        description="Doctor appointments, medications, and records."
+        actions={
+          <Button asChild>
+            <Link href="/health/new">
+              <Plus className="size-4" /> New appointment
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1.5">
@@ -165,6 +164,6 @@ export function HealthPageClient() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

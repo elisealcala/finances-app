@@ -71,7 +71,7 @@ export function NoteForm({ mode = "create", initial }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-[160px_1fr] gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr]">
         <div className="grid gap-1.5">
           <Label htmlFor="date">Date</Label>
           <Input

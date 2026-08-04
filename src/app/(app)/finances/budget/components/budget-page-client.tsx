@@ -25,6 +25,7 @@ import { getBudgetColumns } from "./budget-columns";
 import { SetBudgetDialog } from "./set-budget-dialog";
 import { CategoryForm } from "../../categories/components/category-form";
 import type { BudgetStatus, Category } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function BudgetPageClient() {
   const period = usePeriodFilter();
@@ -95,19 +96,17 @@ export function BudgetPageClient() {
   const isFiltered = filteredBudgets.length !== allBudgets.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Budget</h2>
-          <p className="text-muted-foreground">
-            Track spending against category budgets.
-          </p>
-        </div>
-        <Button onClick={() => setSetBudgetOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Set Budget
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Budget"
+        description="Track spending against category limits for the selected period."
+        actions={
+          <Button onClick={() => setSetBudgetOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Set budget
+          </Button>
+        }
+      />
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-8 p-6">
@@ -115,7 +114,7 @@ export function BudgetPageClient() {
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
               {isFiltered ? "Filtered Budget" : "Total Budget"}
             </p>
-            <p className="mt-1 text-4xl font-bold tabular-nums">
+            <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums">
               {formatCurrency(totalBudget)}
             </p>
           </div>
@@ -123,7 +122,7 @@ export function BudgetPageClient() {
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
               Spent
             </p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-red-500">
+            <p className="text-destructive mt-1 text-2xl font-semibold tabular-nums">
               {formatCurrency(totalSpent)}
             </p>
           </div>
@@ -133,7 +132,7 @@ export function BudgetPageClient() {
             </p>
             <p
               className={`mt-1 text-2xl font-semibold tabular-nums ${
-                totalRemaining >= 0 ? "text-green-600" : "text-red-500"
+                totalRemaining >= 0 ? "text-positive" : "text-destructive"
               }`}
             >
               {formatCurrency(totalRemaining)}
@@ -213,6 +212,6 @@ export function BudgetPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

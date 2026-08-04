@@ -1,11 +1,12 @@
 "use client";
 
 import { RecurringList } from "./recurring-list";
+import { PageShell } from "@/components/page";
 
 export function RecurringPageClient() {
   return (
-    <div className="space-y-6">
+    <PageShell>
       <RecurringList />
-    </div>
+    </PageShell>
   );
 }

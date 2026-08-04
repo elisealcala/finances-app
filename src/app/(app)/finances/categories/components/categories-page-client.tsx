@@ -37,6 +37,7 @@ import { usePeriodFilter } from "../../hooks/use-period-filter";
 import { PeriodSelector } from "../../components/period-selector";
 import { CategoryForm } from "./category-form";
 import type { Category } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function CategoriesPageClient() {
   const { data, isLoading } = useCategories();
@@ -80,19 +81,17 @@ export function CategoriesPageClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Categories</h2>
-          <p className="text-muted-foreground">
-            Organize your transactions with categories and budgets.
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Categories"
+        description="Organize transactions and monitor category budgets."
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add category
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-4">
         <PeriodSelector {...period} />
@@ -198,7 +197,7 @@ export function CategoriesPageClient() {
                               (summary?.percentUsed ?? 0) > 100
                                 ? "bg-destructive"
                                 : (summary?.percentUsed ?? 0) > 80
-                                  ? "bg-yellow-500"
+                                  ? "bg-warning"
                                   : "bg-primary",
                             )}
                             style={{
@@ -259,6 +258,6 @@ export function CategoriesPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

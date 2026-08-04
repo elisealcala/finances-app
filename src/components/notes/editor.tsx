@@ -47,7 +47,7 @@ export function NoteEditor({
       attributes: {
         class: cn(
           "prose-sm dark:prose-invert max-w-none focus:outline-none",
-          "min-h-[300px] px-4 py-3",
+          "min-h-[360px] px-5 py-5 leading-7 sm:px-7 sm:py-6",
         ),
       },
     },
@@ -58,7 +58,7 @@ export function NoteEditor({
 
   if (!editor) {
     return (
-      <div className="border-input rounded-md border">
+      <div className="border-input bg-card overflow-hidden rounded-xl border">
         <div className="border-input border-b p-2" />
         <div className="min-h-[300px] px-4 py-3" />
       </div>
@@ -66,7 +66,7 @@ export function NoteEditor({
   }
 
   return (
-    <div className="border-input bg-card rounded-md border">
+    <div className="border-input bg-card overflow-hidden rounded-xl border">
       <Toolbar editor={editor} />
       <EditorContent editor={editor} />
     </div>
@@ -137,7 +137,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   ];
 
   return (
-    <div className="border-input flex flex-wrap items-center gap-0.5 border-b p-1">
+    <div className="border-input bg-muted/30 flex flex-wrap items-center gap-0.5 border-b p-1.5">
       {buttons.map(({ icon: Icon, label, isActive, action }) => (
         <button
           key={label}
@@ -145,7 +145,7 @@ function Toolbar({ editor }: { editor: Editor }) {
           title={label}
           onClick={action}
           className={cn(
-            "hover:bg-accent hover:text-accent-foreground inline-flex size-7 items-center justify-center rounded transition-colors",
+            "hover:bg-accent hover:text-accent-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors",
             isActive() && "bg-accent text-accent-foreground",
           )}
         >
@@ -173,7 +173,7 @@ function Toolbar({ editor }: { editor: Editor }) {
             .run();
         }}
         className={cn(
-          "hover:bg-accent hover:text-accent-foreground inline-flex size-7 items-center justify-center rounded transition-colors",
+          "hover:bg-accent hover:text-accent-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors",
           editor.isActive("link") && "bg-accent text-accent-foreground",
         )}
       >

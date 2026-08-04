@@ -30,6 +30,7 @@ import {
   useDisconnectGmail,
 } from "@/hooks/use-imports";
 import { toast } from "sonner";
+import { PageHeader, PageShell } from "@/components/page";
 
 type PollEvent = {
   emailMessageId: string;
@@ -61,9 +62,9 @@ const OUTCOME_META: Record<
   PollEvent["outcome"],
   { label: string; icon: typeof CircleCheck; variant: string }
 > = {
-  IMPORTED_NEW: { label: "Imported", icon: CircleCheck, variant: "text-emerald-600" },
+  IMPORTED_NEW: { label: "Imported", icon: CircleCheck, variant: "text-positive" },
   ALREADY_PROCESSED: { label: "Already processed", icon: Clock, variant: "text-muted-foreground" },
-  UNKNOWN_SENDER: { label: "Unknown sender", icon: HelpCircle, variant: "text-amber-600" },
+  UNKNOWN_SENDER: { label: "Unknown sender", icon: HelpCircle, variant: "text-warning" },
   PARSE_FAILED: { label: "Parse failed", icon: XCircle, variant: "text-destructive" },
   FETCH_ERROR: { label: "Fetch error", icon: AlertTriangle, variant: "text-destructive" },
 };
@@ -158,20 +159,17 @@ export function ImportsSettingsClient() {
   const lastPoll = status?.lastPollResult as LastPollResult | null | undefined;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <PageShell width="narrow">
       <Button variant="ghost" size="sm" asChild>
         <Link href="/finances/imports">
           <ArrowLeft className="size-4" /> Back to imports
         </Link>
       </Button>
 
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Import settings</h2>
-        <p className="text-muted-foreground text-sm">
-          Connect Gmail so transactions from BCP, Interbank, and BBVA get
-          imported automatically.
-        </p>
-      </div>
+      <PageHeader
+        title="Import settings"
+        description="Connect Gmail so transactions from BCP, Interbank, and BBVA are imported automatically."
+      />
 
       <Card>
         <CardHeader>
@@ -181,7 +179,7 @@ export function ImportsSettingsClient() {
           {status?.connected ? (
             <>
               <div className="text-foreground flex items-center gap-2 text-sm">
-                <CheckCircle2 className="size-4 text-emerald-600" />
+                <CheckCircle2 className="text-positive size-4" />
                 Connected as <span className="font-medium">{status.email}</span>
               </div>
               <div className="text-muted-foreground text-sm">
@@ -336,7 +334,7 @@ export function ImportsSettingsClient() {
               <SummaryStat
                 label="Imported"
                 value={lastPoll.inserted}
-                tone="text-emerald-600"
+                tone="text-positive"
               />
               <SummaryStat
                 label="Already done"
@@ -346,7 +344,7 @@ export function ImportsSettingsClient() {
               <SummaryStat
                 label="Unknown sender"
                 value={lastPoll.unknownSender}
-                tone="text-amber-600"
+                tone="text-warning"
               />
               <SummaryStat
                 label="Parse failed"
@@ -402,7 +400,7 @@ export function ImportsSettingsClient() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }
 

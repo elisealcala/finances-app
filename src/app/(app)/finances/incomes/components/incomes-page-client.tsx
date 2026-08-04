@@ -31,6 +31,7 @@ import { IncomeTable } from "./income-table";
 import { IncomeForm } from "./income-form";
 import { IncomeCategorySummaryCard } from "./income-category-summary-card";
 import type { Income } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function IncomesPageClient() {
   const period = usePeriodFilter();
@@ -69,24 +70,26 @@ export function IncomesPageClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Income</h2>
-          <p className="text-muted-foreground">
+    <PageShell>
+      <PageHeader
+        title="Income"
+        description={
+          <>
             Track your earnings. Total:{" "}
             {Object.entries(totalsByCurrency)
               .map(([currency, amount]) =>
                 formatCurrency(amount, currency as "PEN" | "USD" | "EUR")
               )
               .join(" / ") || formatCurrency(0)}
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Income
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add income
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-4">
         <PeriodSelector {...period} />
@@ -153,6 +156,6 @@ export function IncomesPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

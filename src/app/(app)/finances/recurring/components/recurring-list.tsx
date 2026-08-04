@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-recurring";
 import { RecurringForm } from "./recurring-form";
 import type { RecurringTransaction } from "@/types/prediction";
+import { PageHeader } from "@/components/page";
 
 const FREQUENCY_LABELS: Record<string, string> = {
   MONTHLY: "Monthly",
@@ -54,24 +55,23 @@ export function RecurringList() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Recurring Transactions</h2>
-          <p className="text-muted-foreground text-sm">
-            Predictable repeating income and expenses
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Recurring
-        </Button>
-      </div>
+      <PageHeader
+        title="Recurring transactions"
+        description="Predictable income, bills, and subscriptions."
+        actions={
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4" />
+            Add recurring
+          </Button>
+        }
+      />
 
       {!data?.items?.length ? (
         <div className="text-muted-foreground rounded-md border border-dashed py-12 text-center text-sm">
           No recurring transactions yet. Add your salary, rent, or subscriptions.
         </div>
       ) : (
+        <div className="bg-card overflow-hidden rounded-xl border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -114,7 +114,7 @@ export function RecurringList() {
                 </TableCell>
                 <TableCell
                   className={`text-right font-medium ${
-                    item.type === "INCOME" ? "text-green-600" : "text-red-600"
+                    item.type === "INCOME" ? "text-positive" : "text-destructive"
                   }`}
                 >
                   {item.type === "INCOME" ? "+" : "-"}
@@ -145,6 +145,7 @@ export function RecurringList() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
 
       <RecurringForm

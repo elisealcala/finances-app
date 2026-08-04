@@ -279,8 +279,8 @@ export function ReadonlyScheduleTable({ rows, onTogglePaid, idMap }: ReadonlySch
                         onClick={() => onTogglePaid(idMap[row.installmentNumber], row.status)}
                         className={`text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
                           isPaid
-                            ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            ? "bg-positive/10 text-positive hover:bg-positive/15"
+                            : "bg-warning/10 text-warning hover:bg-warning/15"
                         }`}
                       >
                         {isPaid ? "Paid" : "Pending"}
@@ -289,8 +289,8 @@ export function ReadonlyScheduleTable({ rows, onTogglePaid, idMap }: ReadonlySch
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                           isPaid
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            ? "bg-positive/10 text-positive"
+                            : "bg-warning/10 text-warning"
                         }`}
                       >
                         {isPaid ? "Paid" : "Pending"}

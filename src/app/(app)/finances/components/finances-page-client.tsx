@@ -11,6 +11,7 @@ import { FinancesSummaryCards } from "./finances-summary-cards";
 import { MonthlyOverviewChart } from "./monthly-overview-chart";
 import { CategoryBreakdownChart } from "../categories/components/category-breakdown-chart";
 import { DebtMonthPaymentTable } from "../debt/components/debt-month-payment-table";
+import { PageHeader, PageShell } from "@/components/page";
 import { generateTimeline } from "@/server/trpc/services/debt/amortization";
 
 type Currency = "PEN" | "USD" | "EUR";
@@ -125,18 +126,12 @@ export function FinancesPageClient() {
     : String(categoryYear);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Finances Overview
-          </h2>
-          <p className="text-muted-foreground">
-            Your financial summary at a glance.
-          </p>
-        </div>
-        <PeriodSelector {...period} />
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Finances overview"
+        description="Income, spending, debt, and savings across the selected period."
+        actions={<PeriodSelector {...period} />}
+      />
 
       <FinancesSummaryCards
         summaries={summaries}
@@ -176,6 +171,6 @@ export function FinancesPageClient() {
           }
         />
       </div>
-    </div>
+    </PageShell>
   );
 }

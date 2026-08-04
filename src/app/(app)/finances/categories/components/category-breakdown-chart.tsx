@@ -73,7 +73,7 @@ function CategoryTooltip({
   const value = Number(p.value);
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
-    <div className="border-border/50 bg-background min-w-[200px] rounded-lg border px-4 py-3 text-sm shadow-xl">
+    <div className="border-border bg-popover min-w-[200px] rounded-xl border px-4 py-3 text-sm shadow-lg shadow-black/8">
       <div className="mb-2 flex items-center gap-2">
         <span
           className="h-3 w-3 rounded-[3px]"
@@ -81,7 +81,7 @@ function CategoryTooltip({
         />
         <span className="text-base font-semibold">{p.name}</span>
       </div>
-      <div className="text-foreground font-mono text-lg font-bold tabular-nums">
+      <div className="text-foreground font-mono text-lg font-semibold tabular-nums">
         {formatCurrency(value, currency)}
       </div>
       <div className="text-muted-foreground text-xs">

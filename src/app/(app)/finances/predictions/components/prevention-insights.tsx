@@ -47,7 +47,7 @@ export function PreventionInsights() {
                 <span className="text-muted-foreground truncate">
                   {account.accountName}
                 </span>
-                <span className={account.room <= 0 ? "text-red-600" : ""}>
+                <span className={account.room <= 0 ? "text-destructive" : ""}>
                   {formatCurrency(account.room)}
                 </span>
               </div>

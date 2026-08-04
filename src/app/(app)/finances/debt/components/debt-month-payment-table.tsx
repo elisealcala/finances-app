@@ -62,12 +62,12 @@ const STATUS_STYLES: Record<
   paid: {
     label: "Paid",
     className:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400",
+      "border-positive/20 bg-positive/10 text-positive",
   },
   pending: {
     label: "Pending",
     className:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400",
+      "border-warning/20 bg-warning/10 text-warning",
   },
   partial: {
     label: "Partial",

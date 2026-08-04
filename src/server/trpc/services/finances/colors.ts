@@ -1,14 +1,14 @@
 export const FINANCE_COLOR_PALETTE = [
-  "#4f46e5", // Indigo
-  "#0891b2", // Cyan
-  "#d97706", // Amber
-  "#16a34a", // Green
-  "#9333ea", // Purple
-  "#e11d48", // Rose
-  "#0d9488", // Teal
-  "#dc2626", // Red
-  "#2563eb", // Blue
-  "#ca8a04", // Yellow
+  "#5d78a6", // Slate blue
+  "#4f8c8b", // Teal
+  "#b9824f", // Ochre
+  "#5f876f", // Green
+  "#7a6c91", // Purple
+  "#a85d68", // Rose
+  "#668f80", // Sage
+  "#b45f5b", // Red
+  "#58789b", // Blue
+  "#9a844f", // Gold
 ] as const;
 
 /** Pick the next unused color from the palette, cycling if all are taken. */

@@ -92,7 +92,7 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
         {showAvailable && (
           <div className="text-muted-foreground text-sm">
             Available:{" "}
-            <span className={accountAvailable.available < 0 ? "text-red-600" : ""}>
+            <span className={accountAvailable.available < 0 ? "text-destructive" : ""}>
               {formatCurrency(accountAvailable.available, account.currency)}
             </span>
           </div>

@@ -21,6 +21,7 @@ import { DataTable } from "@/components/data-table";
 import { getExpenseColumns } from "./expense-columns";
 import { ExpenseForm } from "./expense-form";
 import type { Expense } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function ExpensesPageClient() {
   const period = usePeriodFilter();
@@ -123,17 +124,17 @@ export function ExpensesPageClient() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Expenses</h2>
-          <p className="text-muted-foreground">Track your spending.</p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Expense
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Expenses"
+        description="Review spending and compare it with income and category budgets."
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add expense
+          </Button>
+        }
+      />
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-8 p-6">
@@ -142,13 +143,13 @@ export function ExpensesPageClient() {
               {isFiltered ? "Filtered Total" : "Total Spent"}
             </p>
             {totalEntries.length === 0 ? (
-              <p className="mt-1 text-4xl font-bold tabular-nums">
+              <p className="mt-1 text-3xl font-semibold tracking-[-0.03em] tabular-nums">
                 {formatCurrency(0)}
               </p>
             ) : (
               <div className="mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1">
                 {totalEntries.map(([currency, amount]) => (
-                  <p key={currency} className="text-4xl font-bold tabular-nums">
+                  <p key={currency} className="text-3xl font-semibold tracking-[-0.03em] tabular-nums">
                     {formatCurrency(amount, currency as "PEN" | "USD" | "EUR")}
                   </p>
                 ))}
@@ -182,13 +183,13 @@ export function ExpensesPageClient() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Income</span>
-                  <span className="font-mono text-sm font-semibold text-green-600 tabular-nums">
+                  <span className="text-positive font-mono text-sm font-semibold tabular-nums">
                     {formatCurrency(totalIncome)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Expenses</span>
-                  <span className="font-mono text-sm font-semibold text-red-500 tabular-nums">
+                  <span className="text-destructive font-mono text-sm font-semibold tabular-nums">
                     {formatCurrency(totalExpenses)}
                   </span>
                 </div>
@@ -196,7 +197,7 @@ export function ExpensesPageClient() {
                   <span className="text-sm font-semibold">Balance</span>
                   <span
                     className={`font-mono text-sm font-bold tabular-nums ${
-                      totalIncome - totalExpenses >= 0 ? "text-green-600" : "text-red-500"
+                      totalIncome - totalExpenses >= 0 ? "text-positive" : "text-destructive"
                     }`}
                   >
                     {formatCurrency(totalIncome - totalExpenses)}
@@ -224,7 +225,7 @@ export function ExpensesPageClient() {
                         <div className="bg-muted h-1.5 w-20 overflow-hidden rounded-full">
                           <div
                             className={`h-full rounded-full ${
-                              cat.total > cat.budget ? "bg-red-500" : "bg-green-500"
+                              cat.total > cat.budget ? "bg-destructive" : "bg-positive"
                             }`}
                             style={{
                               width: `${Math.min((cat.total / cat.budget) * 100, 100)}%`,
@@ -296,6 +297,6 @@ export function ExpensesPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

@@ -7,24 +7,24 @@ import { cn } from "@/lib/utils";
 const severityConfig = {
   critical: {
     icon: AlertTriangle,
-    bg: "bg-red-50 dark:bg-red-950/30",
-    border: "border-red-200 dark:border-red-900",
-    text: "text-red-800 dark:text-red-200",
-    iconColor: "text-red-600 dark:text-red-400",
+    bg: "bg-destructive/6",
+    border: "border-destructive/18",
+    text: "text-foreground",
+    iconColor: "text-destructive",
   },
   warning: {
     icon: AlertCircle,
-    bg: "bg-yellow-50 dark:bg-yellow-950/30",
-    border: "border-yellow-200 dark:border-yellow-900",
-    text: "text-yellow-800 dark:text-yellow-200",
-    iconColor: "text-yellow-600 dark:text-yellow-400",
+    bg: "bg-warning/7",
+    border: "border-warning/20",
+    text: "text-foreground",
+    iconColor: "text-warning",
   },
   info: {
     icon: Info,
-    bg: "bg-blue-50 dark:bg-blue-950/30",
-    border: "border-blue-200 dark:border-blue-900",
-    text: "text-blue-800 dark:text-blue-200",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    bg: "bg-info/7",
+    border: "border-info/20",
+    text: "text-foreground",
+    iconColor: "text-info",
   },
 };
 

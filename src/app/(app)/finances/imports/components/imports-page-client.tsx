@@ -24,6 +24,7 @@ import {
 import { useAccounts } from "@/hooks/use-accounts";
 import { useCategories } from "@/hooks/use-categories";
 import { toast } from "sonner";
+import { PageHeader, PageShell } from "@/components/page";
 
 const BANK_LABEL: Record<string, string> = {
   BCP: "BCP",
@@ -90,15 +91,12 @@ export function ImportsPageClient() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Imports</h2>
-          <p className="text-muted-foreground text-sm">
-            Review and confirm transactions parsed from your bank emails.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageShell width="medium">
+      <PageHeader
+        title="Imports"
+        description="Review and confirm transactions parsed from your bank emails."
+        actions={
+          <>
           <Button
             variant="outline"
             size="sm"
@@ -112,8 +110,9 @@ export function ImportsPageClient() {
               <Settings className="size-4" /> Settings
             </Link>
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {status && (
         <p className="text-muted-foreground text-xs">
@@ -246,6 +245,6 @@ export function ImportsPageClient() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

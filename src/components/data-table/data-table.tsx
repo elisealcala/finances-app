@@ -239,7 +239,7 @@ export function DataTable<TData, TValue>({
     <div className="space-y-3">
       <DataTableToolbar table={table} columnFilterTypes={columnFilterTypes} />
 
-      <div className="rounded-md border">
+      <div className="bg-card overflow-hidden rounded-xl border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

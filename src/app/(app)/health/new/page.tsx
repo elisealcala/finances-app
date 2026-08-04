@@ -1,15 +1,14 @@
 import { AppointmentForm } from "../components/appointment-form";
+import { PageHeader, PageShell } from "@/components/page";
 
 export default function NewAppointmentPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">New appointment</h2>
-        <p className="text-muted-foreground text-sm">
-          Log a doctor visit, medications, and any records.
-        </p>
-      </div>
+    <PageShell width="narrow" className="max-w-2xl">
+      <PageHeader
+        title="New appointment"
+        description="Log a doctor visit, medications, and related records."
+      />
       <AppointmentForm />
-    </div>
+    </PageShell>
   );
 }

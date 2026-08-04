@@ -26,6 +26,7 @@ import {
 } from "@/server/trpc/services/debt/amortization";
 import type { Debt } from "@/types/debt";
 import type { DebtSummary } from "@/types/debt";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function DebtPageClient() {
   const router = useRouter();
@@ -86,19 +87,17 @@ export function DebtPageClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Debt Tracker</h2>
-          <p className="text-muted-foreground">
-            Manage and track all your debts in one place.
-          </p>
-        </div>
-        <Button onClick={() => router.push("/finances/debt/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Debt
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Debt tracker"
+        description="Monitor balances, payoff milestones, and repayment scenarios."
+        actions={
+          <Button onClick={() => router.push("/finances/debt/new")}>
+            <Plus className="h-4 w-4" />
+            Add debt
+          </Button>
+        }
+      />
 
       <DebtSummaryCards summary={visibleSummary} />
 
@@ -177,6 +176,6 @@ export function DebtPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

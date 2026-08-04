@@ -64,14 +64,14 @@ export function FinancesSummaryCards({
     .map(({ currency, summary }) => ({
       currency,
       value: formatCurrency(summary?.totalIncome ?? 0, currency),
-      className: "text-green-600",
+      className: "text-positive",
     }));
   const expenseRows = summaries
     .filter(({ summary }) => (summary?.totalExpenses ?? 0) > 0)
     .map(({ currency, summary }) => ({
       currency,
       value: formatCurrency(summary?.totalExpenses ?? 0, currency),
-      className: "text-red-600",
+      className: "text-destructive",
     }));
 
   const cards: SummaryCard[] = [
@@ -87,7 +87,7 @@ export function FinancesSummaryCards({
                   fallback.summary?.totalIncome ?? 0,
                   fallback.currency,
                 ),
-                className: "text-green-600",
+                className: "text-positive",
               },
             ],
       icon: TrendingUp,
@@ -104,7 +104,7 @@ export function FinancesSummaryCards({
                   fallback.summary?.totalExpenses ?? 0,
                   fallback.currency,
                 ),
-                className: "text-red-600",
+                className: "text-destructive",
               },
             ],
       icon: TrendingDown,
@@ -115,7 +115,7 @@ export function FinancesSummaryCards({
         currency,
         value: formatCurrency(summary?.savings ?? 0, currency),
         className:
-          (summary?.savings ?? 0) >= 0 ? "text-green-600" : "text-red-600",
+          (summary?.savings ?? 0) >= 0 ? "text-positive" : "text-destructive",
       })),
       icon: PiggyBank,
     },
@@ -150,7 +150,7 @@ export function FinancesSummaryCards({
                   {row.currency}
                 </span>
                 <span
-                  className={`font-mono text-xl font-bold tabular-nums ${row.className ?? ""}`}
+                  className={`font-mono text-xl font-semibold tracking-[-0.02em] tabular-nums ${row.className ?? ""}`}
                 >
                   {row.value}
                 </span>

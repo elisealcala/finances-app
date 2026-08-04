@@ -12,11 +12,11 @@ export function ThemeToggle() {
       <SidebarMenuItem>
         <SidebarMenuButton
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          tooltip="Toggle theme"
+          tooltip="Appearance"
         >
           <Sun className="dark:hidden" />
           <Moon className="hidden dark:block" />
-          <span>Toggle theme</span>
+          <span>Appearance</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

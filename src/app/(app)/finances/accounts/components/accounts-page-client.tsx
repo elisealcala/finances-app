@@ -18,6 +18,7 @@ import { DataTable } from "@/components/data-table";
 import { AccountForm } from "./account-form";
 import { getAccountColumns } from "./account-columns";
 import type { AccountWithBalance } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function AccountsPageClient() {
   const [showClosed, setShowClosed] = useState(false);
@@ -66,19 +67,17 @@ export function AccountsPageClient() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Accounts</h2>
-          <p className="text-muted-foreground">
-            Manage your bank accounts, credit cards, and cash.
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Account
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Accounts"
+        description="Manage bank accounts, credit cards, and cash balances."
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add account
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-2">
         <Checkbox
@@ -131,6 +130,6 @@ export function AccountsPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

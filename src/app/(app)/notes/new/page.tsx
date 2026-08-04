@@ -1,13 +1,11 @@
 import { NoteForm } from "../components/note-form";
+import { PageHeader, PageShell } from "@/components/page";
 
 export default function NewNotePage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">New entry</h2>
-        <p className="text-muted-foreground text-sm">Write something.</p>
-      </div>
+    <PageShell width="narrow">
+      <PageHeader title="New entry" description="Write something worth returning to." />
       <NoteForm />
-    </div>
+    </PageShell>
   );
 }

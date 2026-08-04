@@ -26,6 +26,7 @@ import { PeriodSelector } from "../../components/period-selector";
 import { TransferTable } from "./transfer-table";
 import { TransferForm } from "./transfer-form";
 import type { Transfer } from "@/types/finances";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function TransfersPageClient() {
   const period = usePeriodFilter();
@@ -64,24 +65,26 @@ export function TransfersPageClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Transfers</h2>
-          <p className="text-muted-foreground">
+    <PageShell>
+      <PageHeader
+        title="Transfers"
+        description={
+          <>
             Move money between accounts. Total:{" "}
             {Object.entries(totalsByCurrency)
               .map(([currency, amount]) =>
                 formatCurrency(amount, currency as "PEN" | "USD" | "EUR")
               )
               .join(" / ") || formatCurrency(0)}
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Transfer
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add transfer
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-4">
         <PeriodSelector {...period} />
@@ -145,6 +148,6 @@ export function TransfersPageClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

@@ -39,7 +39,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/32 backdrop-blur-[2px]",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-50 grid gap-4 shadow-lg duration-200 outline-none max-md:inset-0 max-md:h-dvh max-md:w-screen max-md:max-w-none max-md:overflow-y-auto max-md:p-4 max-md:data-[state=closed]:slide-out-to-bottom max-md:data-[state=open]:slide-in-from-bottom md:top-[50%] md:left-[50%] md:w-full md:max-w-[calc(100%-2rem)] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:border md:p-6 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:max-w-lg",
+          "bg-card data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-50 grid gap-5 shadow-2xl shadow-black/12 duration-200 outline-none max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[92dvh] max-md:w-screen max-md:max-w-none max-md:overflow-y-auto max-md:rounded-t-2xl max-md:border max-md:p-5 max-md:data-[state=closed]:slide-out-to-bottom max-md:data-[state=open]:slide-in-from-bottom md:top-[50%] md:left-[50%] md:w-full md:max-w-[calc(100%-2rem)] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl md:border md:p-6 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:max-w-lg",
           className
         )}
         {...props}

@@ -60,7 +60,7 @@ export function PeriodSelector(period: PeriodSelectorProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" size="icon" onClick={period.goToPrev}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -70,7 +70,7 @@ export function PeriodSelector(period: PeriodSelectorProps) {
         if (o) setGridYear(period.year);
       }}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="min-w-[180px] justify-start gap-2">
+          <Button variant="outline" className="min-w-[156px] justify-start gap-2 sm:min-w-[180px]">
             <CalendarDays className="h-4 w-4" />
             {period.label}
           </Button>

@@ -1,4 +1,5 @@
 import { AppointmentDetail } from "../components/appointment-detail";
+import { PageShell } from "@/components/page";
 
 export default async function AppointmentDetailPage({
   params,
@@ -7,8 +8,8 @@ export default async function AppointmentDetailPage({
 }) {
   const { id } = await params;
   return (
-    <div className="mx-auto max-w-3xl">
+    <PageShell width="narrow">
       <AppointmentDetail id={id} />
-    </div>
+    </PageShell>
   );
 }

@@ -258,7 +258,7 @@ export function CapitalPaymentDialog({
             <Label>Schedule Regeneration</Label>
 
             {newBalance <= 0 && amount > 0 ? (
-              <p className="text-sm text-green-600">
+              <p className="text-positive text-sm">
                 This payment covers the entire remaining balance. The debt
                 will be marked as paid off.
               </p>

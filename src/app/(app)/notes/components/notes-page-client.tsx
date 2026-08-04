@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNotes } from "@/hooks/use-notes";
 import { extractPlainText } from "@/lib/tiptap";
+import { PageHeader, PageShell } from "@/components/page";
 
 export function NotesPageClient() {
   const now = new Date();
@@ -27,20 +28,18 @@ export function NotesPageClient() {
     year === now.getFullYear() && month === now.getMonth() + 1;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Notes</h2>
-          <p className="text-muted-foreground text-sm">
-            Your personal journal, by month.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/notes/new">
-            <Plus className="size-4" /> New entry
-          </Link>
-        </Button>
-      </div>
+    <PageShell width="narrow">
+      <PageHeader
+        title="Notes"
+        description="Your personal journal, organized by month."
+        actions={
+          <Button asChild>
+            <Link href="/notes/new">
+              <Plus className="size-4" /> New entry
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" onClick={() => shift(-1)}>
@@ -114,6 +113,6 @@ export function NotesPageClient() {
           })}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

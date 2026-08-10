@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/data-table";
 import { AccountForm } from "./account-form";
+import { AccountBalanceSummary } from "./account-balance-summary";
 import { getAccountColumns } from "./account-columns";
 import type { AccountWithBalance } from "@/types/finances";
 import { PageHeader, PageShell } from "@/components/page";
@@ -74,6 +75,8 @@ export function AccountsPageClient() {
           </Button>
         }
       />
+
+      <AccountBalanceSummary accounts={accounts} />
 
       <div className="flex items-center gap-2">
         <Checkbox

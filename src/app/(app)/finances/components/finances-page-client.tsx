@@ -13,6 +13,7 @@ import { CategoryBreakdownChart } from "../categories/components/category-breakd
 import { DebtMonthPaymentTable } from "../debt/components/debt-month-payment-table";
 import { PageHeader, PageShell } from "@/components/page";
 import { generateTimeline } from "@/server/trpc/services/debt/amortization";
+import { FinanceCyclePlanner } from "./finance-cycle-planner";
 
 type Currency = "PEN" | "USD" | "EUR";
 
@@ -132,6 +133,8 @@ export function FinancesPageClient() {
         description="Income, spending, debt, and savings across the selected period."
         actions={<PeriodSelector {...period} />}
       />
+
+      <FinanceCyclePlanner />
 
       <FinancesSummaryCards
         summaries={summaries}

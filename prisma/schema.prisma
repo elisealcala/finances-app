@@ -31,49 +31,49 @@ enum InstallmentStatus {
 }
 
 model Debt {
-  id              String     @id @default(cuid())
-  name            String
-  type            DebtType
-  originalBalance Decimal    @map("original_balance") @db.Decimal(12, 2)
-  balance         Decimal    @db.Decimal(12, 2)
-  interestRate    Decimal    @map("interest_rate") @db.Decimal(5, 2)
-  monthlyCapital                Decimal    @map("monthly_capital") @db.Decimal(10, 2)
-  monthlyInterest               Decimal    @map("monthly_interest") @db.Decimal(10, 2)
-  originalMonthlyCapital        Decimal    @map("original_monthly_capital") @db.Decimal(10, 2)
-  originalMonthlyInterest       Decimal    @map("original_monthly_interest") @db.Decimal(10, 2)
-  minimumPayment                Decimal    @map("minimum_payment") @db.Decimal(10, 2)
-  originalMinimumPayment        Decimal    @map("original_minimum_payment") @db.Decimal(10, 2)
-  dueDate                Int?       @map("due_date")
-  lender          String?
-  notes           String?
-  color           String?
-  fees            Json?      @db.Json
-  startedAt       DateTime?  @map("started_at")
-  status          DebtStatus @default(ACTIVE)
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  id                      String     @id @default(cuid())
+  name                    String
+  type                    DebtType
+  originalBalance         Decimal    @map("original_balance") @db.Decimal(12, 2)
+  balance                 Decimal    @db.Decimal(12, 2)
+  interestRate            Decimal    @map("interest_rate") @db.Decimal(5, 2)
+  monthlyCapital          Decimal    @map("monthly_capital") @db.Decimal(10, 2)
+  monthlyInterest         Decimal    @map("monthly_interest") @db.Decimal(10, 2)
+  originalMonthlyCapital  Decimal    @map("original_monthly_capital") @db.Decimal(10, 2)
+  originalMonthlyInterest Decimal    @map("original_monthly_interest") @db.Decimal(10, 2)
+  minimumPayment          Decimal    @map("minimum_payment") @db.Decimal(10, 2)
+  originalMinimumPayment  Decimal    @map("original_minimum_payment") @db.Decimal(10, 2)
+  dueDate                 Int?       @map("due_date")
+  lender                  String?
+  notes                   String?
+  color                   String?
+  fees                    Json?      @db.Json
+  startedAt               DateTime?  @map("started_at")
+  status                  DebtStatus @default(ACTIVE)
+  createdAt               DateTime   @default(now()) @map("created_at")
+  updatedAt               DateTime   @updatedAt @map("updated_at")
 
-  hasSchedule  Boolean    @default(false) @map("has_schedule")
-  termMonths   Int?       @map("term_months")
+  hasSchedule Boolean @default(false) @map("has_schedule")
+  termMonths  Int?    @map("term_months")
 
-  account               Account?
-  payments              DebtPayment[]
-  installments          DebtInstallment[]
+  account      Account?
+  payments     DebtPayment[]
+  installments DebtInstallment[]
 
   @@map("debts")
 }
 
 model DebtPayment {
-  id        String   @id @default(cuid())
-  amount            Decimal  @db.Decimal(12, 2)
-  date              DateTime
-  notes             String?
+  id                 String   @id @default(cuid())
+  amount             Decimal  @db.Decimal(12, 2)
+  date               DateTime
+  notes              String?
   newMonthlyCapital  Decimal? @map("new_monthly_capital") @db.Decimal(10, 2)
   newMonthlyInterest Decimal? @map("new_monthly_interest") @db.Decimal(10, 2)
   newMinimumPayment  Decimal? @map("new_minimum_payment") @db.Decimal(10, 2)
   newFees            Json?    @map("new_fees") @db.Json
-  debtId            String   @map("debt_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  debtId             String   @map("debt_id")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
 
@@ -95,7 +95,8 @@ model DebtInstallment {
   debtId            String            @map("debt_id")
   createdAt         DateTime          @default(now()) @map("created_at")
 
-  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  debt    Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  expense Expense?
 
   @@unique([debtId, installmentNumber])
   @@index([debtId])
@@ -132,6 +133,32 @@ enum StatementStatus {
   PAID
 }
 
+enum FinanceCycleKind {
+  WEEK
+  THREE_MONTHS
+  SIX_MONTHS
+  CUSTOM
+}
+
+enum FinanceCycleStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum FinanceGoalPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum FinanceGoalStatus {
+  ACTIVE
+  FUNDED
+  DEFERRED
+}
+
 model Account {
   id                     String      @id @default(cuid())
   name                   String
@@ -151,54 +178,57 @@ model Account {
   createdAt              DateTime    @default(now()) @map("created_at")
   updatedAt              DateTime    @updatedAt @map("updated_at")
 
-  debt                  Debt?                  @relation(fields: [debtId], references: [id])
-  defaultPayingAccount  Account?               @relation("DefaultPayingAccount", fields: [defaultPayingAccountId], references: [id])
-  defaultPayingFor      Account[]              @relation("DefaultPayingAccount")
-  expenses              Expense[]
-  expensesPaying        Expense[]              @relation("ExpensePayingAccount")
-  incomes               Income[]
-  transfersFrom         Transfer[]             @relation("TransferFrom")
-  transfersTo           Transfer[]             @relation("TransferTo")
-  statements            CreditCardStatement[]
+  debt                 Debt?                 @relation(fields: [debtId], references: [id])
+  defaultPayingAccount Account?              @relation("DefaultPayingAccount", fields: [defaultPayingAccountId], references: [id])
+  defaultPayingFor     Account[]             @relation("DefaultPayingAccount")
+  expenses             Expense[]
+  expensesPaying       Expense[]             @relation("ExpensePayingAccount")
+  incomes              Income[]
+  transfersFrom        Transfer[]            @relation("TransferFrom")
+  transfersTo          Transfer[]            @relation("TransferTo")
+  statements           CreditCardStatement[]
 
   @@map("accounts")
 }
 
 model Category {
-  id            String    @id @default(cuid())
-  name          String    @unique
-  monthlyBudget Decimal?  @map("monthly_budget") @db.Decimal(12, 2)
+  id            String   @id @default(cuid())
+  name          String   @unique
+  monthlyBudget Decimal? @map("monthly_budget") @db.Decimal(12, 2)
   color         String?
   icon          String?
-  isArchived    Boolean   @default(false) @map("is_archived")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  isArchived    Boolean  @default(false) @map("is_archived")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  expenses              Expense[]
-  incomes               Income[]
+  expenses Expense[]
+  incomes  Income[]
+
   @@map("categories")
 }
 
 model Expense {
-  id              String        @id @default(cuid())
-  name            String
-  amount          Decimal       @db.Decimal(12, 2)
-  date            DateTime
-  paymentStatus   PaymentStatus @default(PAID) @map("payment_status")
-  currency        Currency?
-  notes           String?
-  accountId       String        @map("account_id")
-  categoryId      String?       @map("category_id")
-  payingAccountId String?       @map("paying_account_id")
-  paymentDueDate  DateTime?     @map("payment_due_date")
-  statementId     String?       @map("statement_id")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                String        @id @default(cuid())
+  name              String
+  amount            Decimal       @db.Decimal(12, 2)
+  date              DateTime
+  paymentStatus     PaymentStatus @default(PAID) @map("payment_status")
+  currency          Currency?
+  notes             String?
+  accountId         String        @map("account_id")
+  categoryId        String?       @map("category_id")
+  payingAccountId   String?       @map("paying_account_id")
+  paymentDueDate    DateTime?     @map("payment_due_date")
+  statementId       String?       @map("statement_id")
+  debtInstallmentId String?       @unique @map("debt_installment_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
-  account       Account               @relation(fields: [accountId], references: [id])
-  category      Category?             @relation(fields: [categoryId], references: [id])
-  payingAccount Account?              @relation("ExpensePayingAccount", fields: [payingAccountId], references: [id])
-  statement     CreditCardStatement?  @relation(fields: [statementId], references: [id])
+  account         Account              @relation(fields: [accountId], references: [id])
+  category        Category?            @relation(fields: [categoryId], references: [id])
+  payingAccount   Account?             @relation("ExpensePayingAccount", fields: [payingAccountId], references: [id])
+  statement       CreditCardStatement? @relation(fields: [statementId], references: [id])
+  debtInstallment DebtInstallment?     @relation(fields: [debtInstallmentId], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([statementId])
@@ -262,6 +292,64 @@ model Transfer {
 
   @@index([date])
   @@map("transfers")
+}
+
+model FinanceCycle {
+  id                   String             @id @default(cuid())
+  title                String
+  kind                 FinanceCycleKind
+  status               FinanceCycleStatus @default(ACTIVE)
+  startDate            DateTime           @map("start_date")
+  endDate              DateTime           @map("end_date")
+  displayCurrency      Currency           @default(USD) @map("display_currency")
+  openingAmount        Decimal            @default(0) @map("opening_amount") @db.Decimal(14, 2)
+  openingCurrency      Currency           @default(USD) @map("opening_currency")
+  monthlyIncome        Decimal            @default(0) @map("monthly_income") @db.Decimal(14, 2)
+  incomeCurrency       Currency           @default(USD) @map("income_currency")
+  monthlyHousehold     Decimal            @default(0) @map("monthly_household") @db.Decimal(14, 2)
+  householdCurrency    Currency           @default(USD) @map("household_currency")
+  monthlyFlexible      Decimal            @default(0) @map("monthly_flexible") @db.Decimal(14, 2)
+  flexibleCurrency     Currency           @default(USD) @map("flexible_currency")
+  monthlyDebt          Decimal            @default(0) @map("monthly_debt") @db.Decimal(14, 2)
+  debtCurrency         Currency           @default(USD) @map("debt_currency")
+  emergencyFloor       Decimal            @default(0) @map("emergency_floor") @db.Decimal(14, 2)
+  emergencyCurrency    Currency           @default(USD) @map("emergency_currency")
+  incomeVariance       Decimal            @default(10) @map("income_variance") @db.Decimal(5, 2)
+  penPerUsd            Decimal            @default(3.72) @map("pen_per_usd") @db.Decimal(20, 8)
+  usdPerEur            Decimal            @default(1.15) @map("usd_per_eur") @db.Decimal(20, 8)
+  carryPrevious        Boolean            @default(true) @map("carry_previous")
+  previousCycleId      String?            @map("previous_cycle_id")
+  closingAmount        Decimal?           @map("closing_amount") @db.Decimal(14, 2)
+  closingCurrency      Currency?          @map("closing_currency")
+  closedAt             DateTime?          @map("closed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  previousCycle FinanceCycle?      @relation("FinanceCycleLineage", fields: [previousCycleId], references: [id], onDelete: SetNull)
+  nextCycles    FinanceCycle[]      @relation("FinanceCycleLineage")
+  goals         FinanceCycleGoal[]
+
+  @@index([status, startDate])
+  @@index([previousCycleId])
+  @@map("finance_cycles")
+}
+
+model FinanceCycleGoal {
+  id        String              @id @default(cuid())
+  name      String
+  amount    Decimal             @db.Decimal(14, 2)
+  currency  Currency            @default(USD)
+  priority  FinanceGoalPriority @default(MEDIUM)
+  status    FinanceGoalStatus   @default(ACTIVE)
+  position  Int                 @default(0)
+  cycleId   String              @map("cycle_id")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  cycle FinanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId, position])
+  @@map("finance_cycle_goals")
 }
 
 // ============================================
@@ -334,6 +422,365 @@ model Note {
 
   @@index([date])
   @@map("notes")
+}
+
+// ============================================
+// PERFORMANCE MODULE
+// ============================================
+
+enum PerformanceCycleStatus {
+  DRAFT
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum PerformanceMeasurementMode {
+  NUMBER
+  PERCENTAGE
+  MILESTONE
+  BOOLEAN
+  MANUAL
+}
+
+enum PerformanceConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CareerOutputKind {
+  METRIC
+  MILESTONE
+  FORM
+  GITHUB_REPOSITORY
+  GITHUB_PULL_REQUEST
+  LINK
+  FILE
+  MANUAL
+}
+
+enum CareerEvaluationStatus {
+  DRAFT
+  ACCEPTED
+  OVERRIDDEN
+}
+
+enum CareerOpportunityStatus {
+  DRAFT
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  ARCHIVED
+}
+
+enum CareerResumeSource {
+  MANUAL
+  AI
+}
+
+model PerformanceCycle {
+  id            String                 @id @default(cuid())
+  title         String?
+  description   String?                @db.Text
+  desiredResult String                 @map("desired_result") @db.Text
+  startDate     DateTime               @map("start_date")
+  endDate       DateTime               @map("end_date")
+  status        PerformanceCycleStatus @default(ACTIVE)
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  outcomes PerformanceOutcome[]
+  snapshots CareerProgressSnapshot[]
+
+  @@index([status, startDate])
+  @@map("performance_cycles")
+}
+
+model PerformanceOutcome {
+  id        String   @id @default(cuid())
+  title     String
+  result    String   @db.Text
+  impact    String?  @db.Text
+  weight    Decimal  @default(1) @db.Decimal(7, 2)
+  weightRationale String? @map("weight_rationale") @db.Text
+  position  Int      @default(0)
+  cycleId   String   @map("cycle_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cycle      PerformanceCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  keyResults PerformanceKeyResult[]
+
+  @@index([cycleId, position])
+  @@map("performance_outcomes")
+}
+
+model PerformanceKeyResult {
+  id              String                     @id @default(cuid())
+  title           String
+  measurementMode PerformanceMeasurementMode @map("measurement_mode")
+  baseline        Decimal                    @default(0) @db.Decimal(14, 4)
+  target          Decimal                    @default(1) @db.Decimal(14, 4)
+  unit            String?
+  weight          Decimal                    @default(1) @db.Decimal(7, 2)
+  weightRationale String?                    @map("weight_rationale") @db.Text
+  outputKind      CareerOutputKind           @default(METRIC) @map("output_kind")
+  configuration   Json?                      @db.Json
+  rubric          Json?                      @db.Json
+  position        Int                        @default(0)
+  outcomeId       String                     @map("outcome_id")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  outcome PerformanceOutcome          @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  updates PerformanceProgressUpdate[]
+  submissions CareerOutputSubmission[]
+
+  @@index([outcomeId, position])
+  @@map("performance_key_results")
+}
+
+model PerformanceProgressUpdate {
+  id              String                @id @default(cuid())
+  recordedAt      DateTime              @default(now()) @map("recorded_at")
+  value           Decimal?              @db.Decimal(14, 4)
+  progressPercent Decimal?              @map("progress_percent") @db.Decimal(5, 2)
+  confidence      PerformanceConfidence @default(MEDIUM)
+  summary         String                @db.Text
+  blocker         String?               @db.Text
+  nextAction      String?               @map("next_action") @db.Text
+  evidenceLabel   String?               @map("evidence_label")
+  evidenceUrl     String?               @map("evidence_url") @db.Text
+  keyResultId     String                @map("key_result_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  keyResult PerformanceKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+  acceptedEvaluation      CareerEvaluation?                     @relation("AcceptedCareerEvaluation")
+
+  @@index([keyResultId, recordedAt])
+  @@map("performance_progress_updates")
+}
+
+model CareerOutputSubmission {
+  id            String           @id @default(cuid())
+  submittedAt   DateTime         @default(now()) @map("submitted_at")
+  kind          CareerOutputKind
+  label         String?
+  url           String?          @db.Text
+  notes         String?          @db.Text
+  data          Json             @db.Json
+  snapshotHash  String?          @map("snapshot_hash")
+  keyResultId   String           @map("key_result_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  keyResult   PerformanceKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+  evaluations CareerEvaluation[]
+
+  @@index([keyResultId, submittedAt])
+  @@map("career_output_submissions")
+}
+
+model CareerEvaluation {
+  id                       String                 @id @default(cuid())
+  status                   CareerEvaluationStatus @default(DRAFT)
+  score                    Decimal                @db.Decimal(5, 2)
+  grade                    String?
+  summary                  String                 @db.Text
+  strengths                String[]
+  improvements             String[]
+  criterionScores          Json                   @map("criterion_scores") @db.Json
+  citations                Json                   @db.Json
+  model                    String
+  promptVersion            String                 @map("prompt_version")
+  submissionId             String                 @map("submission_id")
+  acceptedProgressUpdateId String?                @unique @map("accepted_progress_update_id")
+  createdAt                DateTime               @default(now()) @map("created_at")
+  acceptedAt               DateTime?              @map("accepted_at")
+
+  submission            CareerOutputSubmission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  acceptedProgressUpdate PerformanceProgressUpdate? @relation("AcceptedCareerEvaluation", fields: [acceptedProgressUpdateId], references: [id], onDelete: SetNull)
+
+  @@index([submissionId, createdAt])
+  @@map("career_evaluations")
+}
+
+model CareerProgressSnapshot {
+  id               String   @id @default(cuid())
+  recordedAt       DateTime @default(now()) @map("recorded_at")
+  progress         Decimal  @db.Decimal(5, 2)
+  expectedProgress Decimal  @map("expected_progress") @db.Decimal(5, 2)
+  scopeWeight      Decimal  @map("scope_weight") @db.Decimal(9, 2)
+  source           String
+  cycleId          String   @map("cycle_id")
+
+  cycle PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId, recordedAt])
+  @@map("career_progress_snapshots")
+}
+
+model KnowledgeDocument {
+  id           String    @id @default(cuid())
+  sourceId     String?   @unique @map("source_id")
+  relativePath String    @unique @map("relative_path")
+  title        String
+  excerpt      String?   @db.Text
+  content      String    @db.Text
+  frontmatter  Json
+  pillar       String?
+  contentHash  String    @map("content_hash")
+  canvas       Json?
+  canvasHash   String?   @map("canvas_hash")
+  canvasModifiedAt DateTime? @map("canvas_modified_at")
+  date         DateTime
+  modifiedAt   DateTime  @map("modified_at")
+  indexedAt    DateTime  @default(now()) @map("indexed_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  tags          KnowledgeDocumentTag[]
+
+  @@index([deletedAt, modifiedAt])
+  @@index([deletedAt, date])
+  @@index([pillar, deletedAt])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeDocumentTag {
+  documentId String   @map("document_id")
+  tag        String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tag])
+  @@index([tag])
+  @@map("knowledge_document_tags")
+}
+
+// ============================================
+// CAREER PROFILE & RESUME MODULE
+// ============================================
+
+model CareerProfile {
+  id          String   @id @default("career-profile")
+  fullName    String   @default("") @map("full_name")
+  headline    String   @default("")
+  email       String   @default("")
+  phone       String   @default("")
+  location    String   @default("")
+  website     String?
+  githubUrl   String?  @map("github_url")
+  linkedInUrl String?  @map("linkedin_url")
+  summary     String   @default("") @db.Text
+  skills      String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("career_profiles")
+}
+
+model CareerExperience {
+  id             String    @id @default(cuid())
+  company        String
+  role           String
+  location       String?
+  employmentType String?   @map("employment_type")
+  startDate      DateTime  @map("start_date")
+  endDate        DateTime? @map("end_date")
+  current        Boolean   @default(false)
+  summary        String?   @db.Text
+  achievements   String[]
+  skills         String[]
+  position       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([position, startDate])
+  @@map("career_experiences")
+}
+
+model CareerEducation {
+  id          String    @id @default(cuid())
+  institution String
+  degree      String
+  field       String?
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  details     String?   @db.Text
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([position])
+  @@map("career_education")
+}
+
+model CareerProject {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  url         String?  @db.Text
+  githubUrl   String?  @map("github_url") @db.Text
+  highlights  String[]
+  skills      String[]
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([position])
+  @@map("career_projects")
+}
+
+model CareerOpportunity {
+  id             String                  @id @default(cuid())
+  company        String
+  role           String
+  url            String?                 @db.Text
+  jobDescription String                  @map("job_description") @db.Text
+  status         CareerOpportunityStatus @default(DRAFT)
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  resumes CareerResume[]
+
+  @@index([status, createdAt])
+  @@map("career_opportunities")
+}
+
+model CareerResume {
+  id            String   @id @default(cuid())
+  title         String
+  template      String   @default("ats")
+  opportunityId String?  @map("opportunity_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  opportunity CareerOpportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  versions     CareerResumeVersion[]
+
+  @@index([opportunityId, updatedAt])
+  @@map("career_resumes")
+}
+
+model CareerResumeVersion {
+  id            String             @id @default(cuid())
+  version       Int
+  content       Json               @db.Json
+  sourceMap     Json?              @map("source_map") @db.Json
+  source        CareerResumeSource @default(MANUAL)
+  model         String?
+  promptVersion String?            @map("prompt_version")
+  resumeId      String             @map("resume_id")
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  resume CareerResume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@unique([resumeId, version])
+  @@index([resumeId, createdAt])
+  @@map("career_resume_versions")
 }
 
 // ============================================

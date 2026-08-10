@@ -105,6 +105,7 @@ export const deletePaymentSchema = z.object({
 
 export const markInstallmentPaidSchema = z.object({
   id: z.string().cuid(),
+  accountId: z.string().cuid(),
   paidAt: z.date().optional(),
 });
 

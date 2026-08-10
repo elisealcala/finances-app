@@ -6,6 +6,7 @@ import { incomeRouter } from "./finances/income.router";
 import { transferRouter } from "./finances/transfer.router";
 import { overviewRouter } from "./finances/overview.router";
 import { statementRouter } from "./finances/statement.router";
+import { cycleRouter } from "./finances/cycle.router";
 
 export const financesRouter = router({
   account: accountRouter,
@@ -15,4 +16,5 @@ export const financesRouter = router({
   transfer: transferRouter,
   overview: overviewRouter,
   statement: statementRouter,
+  cycle: cycleRouter,
 });

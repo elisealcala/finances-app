@@ -17,6 +17,10 @@ const labels: Record<string, string> = {
   budget: "Budget",
   categories: "Categories",
   health: "Health",
+  career: "Career",
+  knowledge: "Knowledge",
+  cycles: "Cycles",
+  resume: "Resume",
   notes: "Notes",
   new: "New",
 };
@@ -24,7 +28,12 @@ const labels: Record<string, string> = {
 function labelFor(segment: string, index: number, segments: string[]) {
   if (labels[segment]) return labels[segment];
   if (index > 0 && segments[index - 1] === "debt") return "Details";
-  if (index > 0 && ["notes", "health"].includes(segments[index - 1])) {
+  if (
+    index > 0 &&
+    ["notes", "health", "knowledge", "cycles", "resume"].includes(
+      segments[index - 1],
+    )
+  ) {
     return "Entry";
   }
   return "Details";

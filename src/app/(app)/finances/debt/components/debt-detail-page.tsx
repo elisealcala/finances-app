@@ -6,11 +6,29 @@ import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { formatCurrency, formatPercentage, DEBT_TYPE_LABELS } from "@/lib/utils";
 import { useDebt } from "@/hooks/use-debts";
+import { useAccounts } from "@/hooks/use-accounts";
 import {
   useMarkInstallmentPaid,
   useMarkInstallmentUnpaid,
@@ -18,6 +36,7 @@ import {
 import { ReadonlyScheduleTable } from "./schedule-table";
 import { CapitalPaymentDialog } from "./capital-payment-dialog";
 import { scheduleRowsToCsv, downloadCsv } from "@/lib/csv";
+import type { Account } from "@/types/finances";
 
 type DebtDetailPageProps = {
   debtId: string;
@@ -28,14 +47,53 @@ export function DebtDetailPage({ debtId }: DebtDetailPageProps) {
   const { data: debt, isLoading } = useDebt(debtId);
   const markPaid = useMarkInstallmentPaid();
   const markUnpaid = useMarkInstallmentUnpaid();
+  const { data: accountsData } = useAccounts({ isArchived: false });
   const [capitalPaymentOpen, setCapitalPaymentOpen] = useState(false);
+  const [installmentToPay, setInstallmentToPay] = useState<string | null>(null);
+  const [paymentAccountId, setPaymentAccountId] = useState("");
+  const [paidAtDate, setPaidAtDate] = useState(
+    format(new Date(), "yyyy-MM-dd"),
+  );
+
+  const accounts = (accountsData?.accounts ?? []) as Account[];
+  const paymentAccounts = accounts.filter(
+    (account) => account.type !== "CREDIT_CARD",
+  );
 
   function handleTogglePaid(installmentId: string, currentStatus: string) {
     if (currentStatus === "PAID") {
       markUnpaid.mutate({ id: installmentId });
     } else {
-      markPaid.mutate({ id: installmentId, paidAt: new Date() });
+      const linkedAccount = accounts.find((account) => account.debtId === debtId);
+      const lenderName = debt?.lender?.trim().toLowerCase();
+      const lenderAccount = lenderName
+        ? paymentAccounts.find(
+            (account) => account.name.trim().toLowerCase() === lenderName,
+          ) ??
+          paymentAccounts.find((account) =>
+            account.name.trim().toLowerCase().includes(lenderName),
+          )
+        : undefined;
+      const preferredAccountId =
+        linkedAccount?.defaultPayingAccountId ??
+        lenderAccount?.id ??
+        paymentAccounts[0]?.id ??
+        "";
+
+      setPaymentAccountId(preferredAccountId);
+      setPaidAtDate(format(new Date(), "yyyy-MM-dd"));
+      setInstallmentToPay(installmentId);
     }
+  }
+
+  async function handleConfirmPaid() {
+    if (!installmentToPay || !paymentAccountId) return;
+    await markPaid.mutateAsync({
+      id: installmentToPay,
+      accountId: paymentAccountId,
+      paidAt: new Date(`${paidAtDate}T12:00:00`),
+    });
+    setInstallmentToPay(null);
   }
 
   if (isLoading) {
@@ -70,6 +128,9 @@ export function DebtDetailPage({ debtId }: DebtDetailPageProps) {
   }
 
   const installments = debt.installments ?? [];
+  const selectedInstallment = installments.find(
+    (installment) => installment.id === installmentToPay,
+  );
   const paidCount = installments.filter((i) => i.status === "PAID").length;
   const totalCount = installments.length;
 
@@ -266,6 +327,87 @@ export function DebtDetailPage({ debtId }: DebtDetailPageProps) {
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={!!installmentToPay}
+        onOpenChange={(open) => !open && setInstallmentToPay(null)}
+      >
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Mark installment as paid</DialogTitle>
+            <DialogDescription>
+              This will create a paid expense for installment #
+              {selectedInstallment?.installmentNumber} under the Debt category.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="debt-payment-account">Payment account</Label>
+              <Select
+                value={paymentAccountId}
+                onValueChange={setPaymentAccountId}
+              >
+                <SelectTrigger id="debt-payment-account">
+                  <SelectValue placeholder="Select an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {paymentAccounts.length === 0 && (
+                <p className="text-destructive text-xs">
+                  Add a bank, cash, or savings account before recording a debt payment.
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="debt-paid-at">Payment date</Label>
+              <Input
+                id="debt-paid-at"
+                type="date"
+                value={paidAtDate}
+                onChange={(event) => setPaidAtDate(event.target.value)}
+              />
+            </div>
+
+            {selectedInstallment && (
+              <div className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Expense amount</span>
+                <span className="font-medium">
+                  {formatCurrency(selectedInstallment.totalAmount)}
+                </span>
+              </div>
+            )}
+
+            {markPaid.error && (
+              <p className="text-destructive text-sm">{markPaid.error.message}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInstallmentToPay(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmPaid}
+              disabled={!paymentAccountId || !paidAtDate || markPaid.isPending}
+            >
+              {markPaid.isPending ? "Recording..." : "Mark paid"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Capital payment dialog */}
       {debt.hasSchedule && (

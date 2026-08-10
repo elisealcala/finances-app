@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  FINANCE_CURRENCIES,
+  FINANCE_CYCLE_KINDS,
+} from "@/lib/finance-cycle";
 
 // ============================================
 // Enum Schemas
@@ -292,6 +296,81 @@ export const categorySummarySchema = z.object({
 });
 
 // ============================================
+// Finance cycle schemas
+// ============================================
+
+export const financeCycleKindSchema = z.enum(FINANCE_CYCLE_KINDS);
+export const financeCycleStatusSchema = z.enum([
+  "DRAFT",
+  "ACTIVE",
+  "CLOSED",
+  "ARCHIVED",
+]);
+export const financeGoalPrioritySchema = z.enum(["HIGH", "MEDIUM", "LOW"]);
+export const financeGoalStatusSchema = z.enum([
+  "ACTIVE",
+  "FUNDED",
+  "DEFERRED",
+]);
+
+export const financeCycleGoalSchema = z.object({
+  id: z.string().cuid().optional(),
+  name: z.string().trim().min(1, "Goal name is required").max(120),
+  amount: z.number().positive("Goal amount must be positive"),
+  currency: z.enum(FINANCE_CURRENCIES),
+  priority: financeGoalPrioritySchema.default("MEDIUM"),
+  status: financeGoalStatusSchema.default("ACTIVE"),
+  position: z.number().int().nonnegative().default(0),
+});
+
+const financeCycleFieldsSchema = z.object({
+  title: z.string().trim().min(1, "Cycle title is required").max(120),
+  kind: financeCycleKindSchema,
+  status: financeCycleStatusSchema.default("ACTIVE"),
+  startDate: z.date(),
+  endDate: z.date(),
+  displayCurrency: z.enum(FINANCE_CURRENCIES).default("USD"),
+  openingAmount: z.number().nonnegative(),
+  openingCurrency: z.enum(FINANCE_CURRENCIES),
+  monthlyIncome: z.number().nonnegative(),
+  incomeCurrency: z.enum(FINANCE_CURRENCIES),
+  monthlyHousehold: z.number().nonnegative(),
+  householdCurrency: z.enum(FINANCE_CURRENCIES),
+  monthlyFlexible: z.number().nonnegative(),
+  flexibleCurrency: z.enum(FINANCE_CURRENCIES),
+  monthlyDebt: z.number().nonnegative(),
+  debtCurrency: z.enum(FINANCE_CURRENCIES),
+  emergencyFloor: z.number().nonnegative(),
+  emergencyCurrency: z.enum(FINANCE_CURRENCIES),
+  incomeVariance: z.number().min(0).max(100),
+  penPerUsd: z.number().positive(),
+  usdPerEur: z.number().positive(),
+  carryPrevious: z.boolean().default(true),
+  previousCycleId: z.string().cuid().nullable().optional(),
+  goals: z.array(financeCycleGoalSchema).max(50).default([]),
+});
+
+export const createFinanceCycleSchema = financeCycleFieldsSchema.refine(
+  (input) => input.endDate > input.startDate,
+  { message: "Cycle end date must be after its start date", path: ["endDate"] },
+);
+
+export const updateFinanceCycleSchema = financeCycleFieldsSchema
+  .extend({ id: z.string().cuid() })
+  .refine((input) => input.endDate > input.startDate, {
+    message: "Cycle end date must be after its start date",
+    path: ["endDate"],
+  });
+
+export const listFinanceCyclesSchema = z
+  .object({
+    status: financeCycleStatusSchema.optional(),
+  })
+  .optional();
+
+export const closeFinanceCycleSchema = z.object({ id: z.string().cuid() });
+
+// ============================================
 // Exported types
 // ============================================
 
@@ -324,3 +403,10 @@ export type UpdateStatementInput = z.infer<typeof updateStatementSchema>;
 export type ListStatementsInput = z.infer<typeof listStatementsSchema>;
 export type MarkExpensePaidInput = z.infer<typeof markExpensePaidSchema>;
 export type PayStatementInput = z.infer<typeof payStatementSchema>;
+export type CreateFinanceCycleInput = z.infer<
+  typeof createFinanceCycleSchema
+>;
+export type UpdateFinanceCycleInput = z.infer<
+  typeof updateFinanceCycleSchema
+>;
+export type ListFinanceCyclesInput = z.infer<typeof listFinanceCyclesSchema>;

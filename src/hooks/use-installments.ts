@@ -14,6 +14,21 @@ export function useMarkInstallmentPaid() {
       queryClient.invalidateQueries({
         queryKey: trpc.debt.getById.queryKey({ id: _data.id }),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.summary.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.budgetStatus.queryKey(),
+      });
     },
   });
 }
@@ -28,6 +43,21 @@ export function useMarkInstallmentUnpaid() {
       queryClient.invalidateQueries({ queryKey: trpc.debt.list.queryKey() });
       queryClient.invalidateQueries({
         queryKey: trpc.debt.getById.queryKey({ id: _data.id }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.expense.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.account.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.summary.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.category.budgetStatus.queryKey(),
       });
     },
   });

@@ -7,6 +7,11 @@ import {
   HeartPulse,
   NotebookPen,
   Sparkles,
+  BriefcaseBusiness,
+  Brain,
+  RefreshCw,
+  FileUser,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -46,6 +51,17 @@ const navItems = [
     title: "Health",
     url: "/health",
     icon: HeartPulse,
+  },
+  {
+    title: "Career",
+    url: "/career",
+    icon: BriefcaseBusiness,
+    items: [
+      { title: "Overview", url: "/career", icon: LayoutDashboard },
+      { title: "Knowledge", url: "/career/knowledge", icon: Brain },
+      { title: "Cycles", url: "/career/cycles", icon: RefreshCw },
+      { title: "Resume", url: "/career/resume", icon: FileUser },
+    ],
   },
   {
     title: "Notes",

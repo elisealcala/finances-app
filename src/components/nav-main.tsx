@@ -23,6 +23,7 @@ type NavItem = {
   items?: {
     title: string;
     url: string;
+    icon?: LucideIcon;
   }[];
 };
 
@@ -95,6 +96,7 @@ function CollapsibleNavItem({
                   isActive={pathname === subItem.url}
                 >
                   <Link href={subItem.url}>
+                    {subItem.icon ? <subItem.icon /> : null}
                     <span>{subItem.title}</span>
                   </Link>
                 </SidebarMenuSubButton>

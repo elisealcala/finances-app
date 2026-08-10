@@ -568,12 +568,65 @@ export const debtRouter = router({
         });
       }
 
+      const paidAt = input.paidAt ?? new Date();
       const updated = await ctx.db.$transaction(async (tx) => {
+        const account = await tx.account.findUnique({
+          where: { id: input.accountId },
+          select: { id: true, name: true, type: true, currency: true },
+        });
+        if (!account) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: `Payment account with ID ${input.accountId} not found`,
+          });
+        }
+        if (account.type === "CREDIT_CARD") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Debt payments must use a non-credit-card account",
+          });
+        }
+
+        const debtCategory = await tx.category.upsert({
+          where: { name: "Debt" },
+          update: { isArchived: false },
+          create: {
+            name: "Debt",
+            icon: "Landmark",
+            isArchived: false,
+          },
+        });
+
+        await tx.expense.upsert({
+          where: { debtInstallmentId: installment.id },
+          update: {
+            name: `Debt: ${installment.debt.name} #${installment.installmentNumber}`,
+            amount: installment.totalAmount,
+            date: paidAt,
+            paymentStatus: "PAID",
+            currency: account.currency,
+            notes: `Auto-created from installment #${installment.installmentNumber}`,
+            accountId: account.id,
+            categoryId: debtCategory.id,
+          },
+          create: {
+            name: `Debt: ${installment.debt.name} #${installment.installmentNumber}`,
+            amount: installment.totalAmount,
+            date: paidAt,
+            paymentStatus: "PAID",
+            currency: account.currency,
+            notes: `Auto-created from installment #${installment.installmentNumber}`,
+            accountId: account.id,
+            categoryId: debtCategory.id,
+            debtInstallmentId: installment.id,
+          },
+        });
+
         await tx.debtInstallment.update({
           where: { id: input.id },
           data: {
             status: "PAID",
-            paidAt: input.paidAt ?? new Date(),
+            paidAt,
           },
         });
 
@@ -622,6 +675,10 @@ export const debtRouter = router({
       }
 
       const updated = await ctx.db.$transaction(async (tx) => {
+        await tx.expense.deleteMany({
+          where: { debtInstallmentId: input.id },
+        });
+
         await tx.debtInstallment.update({
           where: { id: input.id },
           data: {

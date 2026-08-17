@@ -179,29 +179,54 @@ export const expenseRouter = router({
         });
       }
 
-      const updated = await ctx.db.expense.update({
-        where: { id: input.expenseId },
-        data: { paymentStatus: "PAID" },
-        include: {
-          account: { select: { id: true, name: true, currency: true, type: true, color: true } },
-          category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
-          payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
-        },
-      });
-
-      // Optionally create a transfer from paying account to credit card
-      if (input.createTransfer && expense.payingAccountId) {
-        await ctx.db.transfer.create({
-          data: {
-            name: `CC Payment: ${expense.name}`,
-            amount: expense.amount,
-            date: new Date(),
-            fromAccountId: expense.payingAccountId,
-            toAccountId: expense.accountId,
-            notes: `Auto-created from expense payment`,
+      const updated = await ctx.db.$transaction(async (tx) => {
+        const updatedExpense = await tx.expense.update({
+          where: { id: input.expenseId },
+          data: { paymentStatus: "PAID" },
+          include: {
+            account: { select: { id: true, name: true, currency: true, type: true, color: true } },
+            category: { select: { id: true, name: true, color: true, icon: true, monthlyBudget: true } },
+            payingAccount: { select: { id: true, name: true, currency: true, type: true, color: true } },
           },
         });
-      }
+
+        // Optionally create a transfer from paying account to credit card.
+        // Only create it on the first transition to PAID so retries are safe.
+        if (
+          input.createTransfer &&
+          expense.paymentStatus === "NOT_PAID" &&
+          expense.payingAccountId
+        ) {
+          await tx.transfer.create({
+            data: {
+              name: `CC Payment: ${expense.name}`,
+              amount: expense.amount,
+              date: new Date(),
+              fromAccountId: expense.payingAccountId,
+              toAccountId: expense.accountId,
+              notes: `Auto-created from expense payment`,
+            },
+          });
+        }
+
+        if (expense.statementId) {
+          const remainingUnpaid = await tx.expense.count({
+            where: {
+              statementId: expense.statementId,
+              paymentStatus: "NOT_PAID",
+            },
+          });
+
+          if (remainingUnpaid === 0) {
+            await tx.creditCardStatement.updateMany({
+              where: { id: expense.statementId, status: "CLOSED" },
+              data: { status: "PAID" },
+            });
+          }
+        }
+
+        return updatedExpense;
+      });
 
       return serializeExpense(updated);
     }),

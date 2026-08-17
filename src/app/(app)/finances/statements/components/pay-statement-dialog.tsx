@@ -116,7 +116,6 @@ export function PayStatementDialog({
   const canSubmit =
     !!paymentDateStr &&
     withoutPayer.length === 0 &&
-    unpaidExpenses.length > 0 &&
     allRatesProvided &&
     !payStatement.isPending;
 

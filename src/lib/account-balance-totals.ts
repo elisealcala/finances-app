@@ -5,8 +5,33 @@ export const ACCOUNT_BALANCE_CURRENCIES = ["PEN", "USD", "EUR"] as const;
 export type AccountBalanceCurrency =
   (typeof ACCOUNT_BALANCE_CURRENCIES)[number];
 
+export type AccountCurrencyBalance = {
+  currency: AccountBalanceCurrency;
+  amount: number;
+  isPrimary: boolean;
+};
+
+export function getAccountCurrencyBalances(
+  account: AccountWithBalance,
+): AccountCurrencyBalance[] {
+  return ACCOUNT_BALANCE_CURRENCIES.filter((currency) => {
+    if (currency === account.currency) return true;
+    if (currency === account.secondaryCurrency) return true;
+    return (account.balancesByCurrency?.[currency] ?? 0) !== 0;
+  }).map((currency) => ({
+    currency,
+    amount: account.balancesByCurrency
+      ? (account.balancesByCurrency[currency] ?? 0)
+      : currency === account.currency
+        ? account.balance
+        : 0,
+    isPrimary: currency === account.currency,
+  }));
+}
+
 export function sumActiveAccountBalances(
   accounts: AccountWithBalance[],
+  excludedAccountIds: ReadonlySet<string> = new Set(),
 ): Record<AccountBalanceCurrency, number> {
   const totals: Record<AccountBalanceCurrency, number> = {
     PEN: 0,
@@ -15,16 +40,11 @@ export function sumActiveAccountBalances(
   };
 
   for (const account of accounts) {
-    if (account.isArchived) continue;
+    if (account.isArchived || excludedAccountIds.has(account.id)) continue;
 
-    if (account.balancesByCurrency) {
-      for (const currency of ACCOUNT_BALANCE_CURRENCIES) {
-        totals[currency] += account.balancesByCurrency[currency] ?? 0;
-      }
-      continue;
+    for (const balance of getAccountCurrencyBalances(account)) {
+      totals[balance.currency] += balance.amount;
     }
-
-    totals[account.currency] += account.balance;
   }
 
   return totals;

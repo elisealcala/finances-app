@@ -3,7 +3,10 @@ import { describe, test } from "node:test";
 
 import type { AccountWithBalance } from "@/types/finances";
 
-import { sumActiveAccountBalances } from "./account-balance-totals";
+import {
+  getAccountCurrencyBalances,
+  sumActiveAccountBalances,
+} from "./account-balance-totals";
 
 const createdAt = new Date("2026-08-10T12:00:00.000Z");
 
@@ -32,6 +35,56 @@ function account(
     ...overrides,
   };
 }
+
+describe("getAccountCurrencyBalances", () => {
+  test("returns primary and configured zero-valued secondary currencies in supported order", () => {
+    const balances = getAccountCurrencyBalances(
+      account({
+        currency: "EUR",
+        secondaryCurrency: "PEN",
+        balance: 45,
+        balancesByCurrency: { EUR: 45 },
+      }),
+    );
+
+    assert.deepEqual(balances, [
+      { currency: "PEN", amount: 0, isPrimary: false },
+      { currency: "EUR", amount: 45, isPrimary: true },
+    ]);
+  });
+
+  test("includes nonconfigured nonzero buckets and trusts bucketed primary values", () => {
+    const balances = getAccountCurrencyBalances(
+      account({
+        currency: "USD",
+        secondaryCurrency: null,
+        balance: 9_999,
+        balancesByCurrency: { PEN: 25, USD: 100, EUR: -5 },
+      }),
+    );
+
+    assert.deepEqual(balances, [
+      { currency: "PEN", amount: 25, isPrimary: false },
+      { currency: "USD", amount: 100, isPrimary: true },
+      { currency: "EUR", amount: -5, isPrimary: false },
+    ]);
+  });
+
+  test("falls back to account.balance when currency buckets are absent", () => {
+    const balances = getAccountCurrencyBalances(
+      account({
+        currency: "USD",
+        secondaryCurrency: "EUR",
+        balance: 300,
+      }),
+    );
+
+    assert.deepEqual(balances, [
+      { currency: "USD", amount: 300, isPrimary: true },
+      { currency: "EUR", amount: 0, isPrimary: false },
+    ]);
+  });
+});
 
 describe("sumActiveAccountBalances", () => {
   test("sums active primary balances and secondary-currency buckets", () => {
@@ -119,6 +172,82 @@ describe("sumActiveAccountBalances", () => {
     assert.deepEqual(totals, {
       PEN: 250,
       USD: 0,
+      EUR: 0,
+    });
+  });
+
+  test("excludes selected active accounts from primary and multi-currency totals", () => {
+    const totals = sumActiveAccountBalances(
+      [
+        account({
+          id: "included-pen-account",
+          currency: "PEN",
+          balance: 600,
+          balancesByCurrency: { PEN: 600 },
+        }),
+        account({
+          id: "excluded-primary-account",
+          currency: "USD",
+          balance: 250,
+          balancesByCurrency: { USD: 250 },
+        }),
+        account({
+          id: "excluded-multi-currency-account",
+          currency: "PEN",
+          secondaryCurrency: "USD",
+          balance: 400,
+          balancesByCurrency: { PEN: 400, USD: 125, EUR: 30 },
+        }),
+        account({
+          id: "included-multi-currency-account",
+          currency: "USD",
+          secondaryCurrency: "EUR",
+          balance: 75,
+          balancesByCurrency: { USD: 75, EUR: 20 },
+        }),
+      ],
+      new Set([
+        "excluded-primary-account",
+        "excluded-multi-currency-account",
+      ]),
+    );
+
+    assert.deepEqual(totals, {
+      PEN: 600,
+      USD: 75,
+      EUR: 20,
+    });
+  });
+
+  test("continues to exclude archived accounts when an exclusion set is provided", () => {
+    const totals = sumActiveAccountBalances(
+      [
+        account({
+          id: "included-active-account",
+          currency: "USD",
+          balance: 90,
+          balancesByCurrency: { USD: 90 },
+        }),
+        account({
+          id: "excluded-active-account",
+          currency: "PEN",
+          balance: 300,
+          balancesByCurrency: { PEN: 300 },
+        }),
+        account({
+          id: "archived-account",
+          currency: "EUR",
+          balance: 500,
+          balancesByCurrency: { EUR: 500 },
+          isArchived: true,
+        }),
+      ],
+      new Set(["excluded-active-account"]),
+    );
+
+    assert.deepEqual(totals, {
+      PEN: 0,
+      USD: 90,
       EUR: 0,
     });
   });

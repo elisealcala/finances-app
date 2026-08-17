@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2, CreditCard, Landmark, Wallet, PiggyBank, TrendingUp, HelpCircle } from "lucide-react";
 import { formatCurrency, ACCOUNT_TYPE_LABELS } from "@/lib/utils";
+import { getAccountCurrencyBalances } from "@/lib/account-balance-totals";
 import type { AccountWithBalance } from "@/types/finances";
 
 const ACCOUNT_ICONS: Record<string, typeof Landmark> = {
@@ -30,6 +31,7 @@ type AccountCardProps = {
 
 export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
   const Icon = ACCOUNT_ICONS[account.type] ?? HelpCircle;
+  const currencyBalances = getAccountCurrencyBalances(account);
 
   return (
     <Card>
@@ -68,20 +70,14 @@ export function AccountCard({ account, onEdit, onDelete }: AccountCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
-          {formatCurrency(
-            account.balancesByCurrency?.[account.currency] ?? account.balance,
-            account.currency,
-          )}
-        </div>
-        {account.balancesByCurrency &&
-          Object.entries(account.balancesByCurrency)
-            .filter(([cur]) => cur !== account.currency)
-            .map(([cur, amt]) => (
-              <div key={cur} className="text-muted-foreground text-lg">
-                {formatCurrency(amt, cur as "PEN" | "USD" | "EUR")}
-              </div>
-            ))}
+        {currencyBalances.map((balance) => (
+          <div
+            key={balance.currency}
+            className={balance.isPrimary ? "text-2xl font-bold" : "text-muted-foreground text-lg"}
+          >
+            {formatCurrency(balance.amount, balance.currency)}
+          </div>
+        ))}
         <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
           <Badge variant="secondary" className="text-xs">
             {ACCOUNT_TYPE_LABELS[account.type] ?? account.type}

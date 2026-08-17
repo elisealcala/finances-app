@@ -5,10 +5,9 @@ import {
   calculateFinanceForecast,
   convertFinanceCurrency,
   deriveFinanceCycleEndDate,
+  FINANCE_CYCLE_OPENING_ACCOUNT_TYPES,
   type FinanceCycleForecastInput,
 } from "./finance-cycle";
-
-const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12;
 
 function date(value: string) {
   return new Date(`${value}T12:00:00.000Z`);
@@ -56,6 +55,23 @@ function forecastInput(
     ...overrides,
   };
 }
+
+describe("FINANCE_CYCLE_OPENING_ACCOUNT_TYPES", () => {
+  test("limits opening balances to liquid and credit-card accounts", () => {
+    assert.deepEqual([...FINANCE_CYCLE_OPENING_ACCOUNT_TYPES], [
+      "BANK",
+      "CASH",
+      "SAVINGS",
+      "CREDIT_CARD",
+    ]);
+
+    const openingAccountTypes = new Set<string>(
+      FINANCE_CYCLE_OPENING_ACCOUNT_TYPES,
+    );
+    assert.equal(openingAccountTypes.has("INVESTMENT"), false);
+    assert.equal(openingAccountTypes.has("OTHER"), false);
+  });
+});
 
 describe("deriveFinanceCycleEndDate", () => {
   test("derives weekly, three-month, and six-month boundaries", () => {
@@ -154,7 +170,7 @@ describe("calculateFinanceForecast", () => {
         finalBalance: 2_800,
         availableForGoals: 1_300,
         goalGap: 700,
-        fundedPercent: 65,
+        fundedPercent: 0,
         extraPerPeriod: 700 / 3,
         affordableGoalIds: [],
         deferredGoalIds: ["primary-goal"],
@@ -203,13 +219,90 @@ describe("calculateFinanceForecast", () => {
       assertClose(result.extraPerPeriod, expected.extraPerPeriod);
       assert.deepEqual(result.affordableGoalIds, expected.affordableGoalIds);
       assert.deepEqual(result.deferredGoalIds, expected.deferredGoalIds);
-      assert.equal(result.points.length, 4);
+      assert.equal(result.points.length, 5);
       assert.equal(result.points[0]?.balance, forecast.openingBalance);
       assert.equal(result.points.at(-1)?.balance, result.finalBalance);
     }
   });
 
-  test("uses a single weekly period and preserves its final roll-forward balance", () => {
+  test("defaults all cash flows to the first day of the month", () => {
+    const forecast = calculateFinanceForecast(forecastInput());
+    const points = forecast.results.expected.points;
+    const snapshots = points.map(({ date: pointDate, ...point }) => ({
+      date: pointDate.toISOString().slice(0, 10),
+      ...point,
+    }));
+
+    assert.deepEqual(snapshots, [
+      {
+        date: "2026-01-15",
+        balance: 1_000,
+        goalPurchases: 0,
+        cashAfterGoals: 1_000,
+        openingBalance: 1_000,
+        income: 0,
+        householdSpending: 0,
+        flexibleSpending: 0,
+        debtPayments: 0,
+        totalExpenses: 0,
+        netChange: 0,
+      },
+      {
+        date: "2026-02-01",
+        balance: 2_000,
+        goalPurchases: 0,
+        cashAfterGoals: 2_000,
+        openingBalance: 1_000,
+        income: 2_000,
+        householdSpending: 700,
+        flexibleSpending: 200,
+        debtPayments: 100,
+        totalExpenses: 1_000,
+        netChange: 1_000,
+      },
+      {
+        date: "2026-03-01",
+        balance: 3_000,
+        goalPurchases: 0,
+        cashAfterGoals: 3_000,
+        openingBalance: 1_000,
+        income: 4_000,
+        householdSpending: 1_400,
+        flexibleSpending: 400,
+        debtPayments: 200,
+        totalExpenses: 2_000,
+        netChange: 2_000,
+      },
+      {
+        date: "2026-04-01",
+        balance: 4_000,
+        goalPurchases: 0,
+        cashAfterGoals: 4_000,
+        openingBalance: 1_000,
+        income: 6_000,
+        householdSpending: 2_100,
+        flexibleSpending: 600,
+        debtPayments: 300,
+        totalExpenses: 3_000,
+        netChange: 3_000,
+      },
+      {
+        date: "2026-04-15",
+        balance: 4_000,
+        goalPurchases: 2_000,
+        cashAfterGoals: 2_000,
+        openingBalance: 1_000,
+        income: 6_000,
+        householdSpending: 2_100,
+        flexibleSpending: 600,
+        debtPayments: 300,
+        totalExpenses: 3_000,
+        netChange: 3_000,
+      },
+    ]);
+  });
+
+  test("does not apply a cash flow outside a weekly cycle", () => {
     const startDate = date("2026-01-15");
     const endDate = deriveFinanceCycleEndDate(startDate, "WEEK");
     const forecast = calculateFinanceForecast(
@@ -221,7 +314,7 @@ describe("calculateFinanceForecast", () => {
     assert.equal(forecast.durationMonths, weeklyFraction);
     assert.equal(expected.points.length, 2);
     assertClose(expected.periodRoom, 1_000 * weeklyFraction);
-    assertClose(expected.finalBalance, 1_000 + 1_000 * weeklyFraction);
+    assert.equal(expected.finalBalance, 1_000);
     assert.equal(expected.availableForGoals, 0);
     assert.equal(expected.goalGap, 2_000);
     assert.equal(expected.fundedPercent, 0);
@@ -229,6 +322,122 @@ describe("calculateFinanceForecast", () => {
     assert.equal(expected.requiredPerPeriod, 2_500);
     assert.equal(expected.points.at(-1)?.date.toISOString(), endDate.toISOString());
     assert.equal(expected.points.at(-1)?.balance, expected.finalBalance);
+  });
+
+  test("applies full cash flows on their distinct scheduled dates without proration", () => {
+    const startDate = date("2026-01-15");
+    const endDate = deriveFinanceCycleEndDate(startDate, "WEEK");
+    const points = calculateFinanceForecast(
+      forecastInput({
+        kind: "WEEK",
+        startDate,
+        endDate,
+        incomeDayOfMonth: 20,
+        householdDayOfMonth: 21,
+        flexibleDayOfMonth: 21,
+        debtDayOfMonth: 22,
+      }),
+    ).results.expected.points;
+    const snapshots = points.map(({ date: pointDate, ...point }) => ({
+      date: pointDate.toISOString().slice(0, 10),
+      ...point,
+    }));
+
+    assert.deepEqual(snapshots, [
+      {
+        date: "2026-01-15",
+        balance: 1_000,
+        goalPurchases: 0,
+        cashAfterGoals: 1_000,
+        openingBalance: 1_000,
+        income: 0,
+        householdSpending: 0,
+        flexibleSpending: 0,
+        debtPayments: 0,
+        totalExpenses: 0,
+        netChange: 0,
+      },
+      {
+        date: "2026-01-20",
+        balance: 3_000,
+        goalPurchases: 0,
+        cashAfterGoals: 3_000,
+        openingBalance: 1_000,
+        income: 2_000,
+        householdSpending: 0,
+        flexibleSpending: 0,
+        debtPayments: 0,
+        totalExpenses: 0,
+        netChange: 2_000,
+      },
+      {
+        date: "2026-01-21",
+        balance: 2_100,
+        goalPurchases: 0,
+        cashAfterGoals: 2_100,
+        openingBalance: 1_000,
+        income: 2_000,
+        householdSpending: 700,
+        flexibleSpending: 200,
+        debtPayments: 0,
+        totalExpenses: 900,
+        netChange: 1_100,
+      },
+      {
+        date: "2026-01-22",
+        balance: 2_000,
+        goalPurchases: 0,
+        cashAfterGoals: 2_000,
+        openingBalance: 1_000,
+        income: 2_000,
+        householdSpending: 700,
+        flexibleSpending: 200,
+        debtPayments: 100,
+        totalExpenses: 1_000,
+        netChange: 1_000,
+      },
+    ]);
+  });
+
+  test("clamps day 31 cash flows to February month end", () => {
+    const startDate = date("2026-02-01");
+    const endDate = date("2026-03-01");
+    const points = calculateFinanceForecast(
+      forecastInput({
+        kind: "CUSTOM",
+        startDate,
+        endDate,
+        incomeDayOfMonth: 31,
+        householdDayOfMonth: 31,
+        flexibleDayOfMonth: 31,
+        debtDayOfMonth: 31,
+      }),
+    ).results.expected.points;
+
+    assert.deepEqual(
+      points.map((point) => point.date.toISOString().slice(0, 10)),
+      ["2026-02-01", "2026-02-28", "2026-03-01"],
+    );
+    assert.deepEqual(
+      points[1] && {
+        balance: points[1].balance,
+        income: points[1].income,
+        householdSpending: points[1].householdSpending,
+        flexibleSpending: points[1].flexibleSpending,
+        debtPayments: points[1].debtPayments,
+        totalExpenses: points[1].totalExpenses,
+        netChange: points[1].netChange,
+      },
+      {
+        balance: 2_000,
+        income: 2_000,
+        householdSpending: 700,
+        flexibleSpending: 200,
+        debtPayments: 100,
+        totalExpenses: 1_000,
+        netChange: 1_000,
+      },
+    );
   });
 
   test("projects six-month and custom cycles to their exact final dates", () => {
@@ -247,7 +456,7 @@ describe("calculateFinanceForecast", () => {
 
     assert.equal(sixMonthForecast.durationMonths, 6);
     assert.equal(sixMonthForecast.results.expected.finalBalance, 7_000);
-    assert.equal(sixMonthForecast.results.expected.points.length, 7);
+    assert.equal(sixMonthForecast.results.expected.points.length, 8);
     assert.equal(
       sixMonthForecast.results.expected.points.at(-1)?.date.toISOString(),
       sixMonthEndDate.toISOString(),
@@ -265,22 +474,25 @@ describe("calculateFinanceForecast", () => {
         endDate: customEndDate,
       }),
     );
-    const customDuration = 45 / AVERAGE_DAYS_PER_MONTH;
+    const customDuration = 1.5;
+    const customEndpoint = customForecast.results.expected.points.at(-1);
 
-    assertClose(customForecast.durationMonths, customDuration);
+    assert.equal(customForecast.durationMonths, customDuration);
     assert.equal(customForecast.results.expected.points.length, 3);
-    assertClose(
-      customForecast.results.expected.finalBalance,
-      1_000 + 1_000 * customDuration,
-    );
-    assert.equal(
-      customForecast.results.expected.points.at(-1)?.date.toISOString(),
-      customEndDate.toISOString(),
-    );
-    assert.equal(
-      customForecast.results.expected.points.at(-1)?.balance,
-      customForecast.results.expected.finalBalance,
-    );
+    assert.equal(customForecast.results.expected.finalBalance, 3_000);
+    assert.deepEqual(customEndpoint, {
+      date: customEndDate,
+      balance: 3_000,
+      goalPurchases: 0,
+      cashAfterGoals: 3_000,
+      openingBalance: 1_000,
+      income: 4_000,
+      householdSpending: 1_400,
+      flexibleSpending: 400,
+      debtPayments: 200,
+      totalExpenses: 2_000,
+      netChange: 2_000,
+    });
   });
 
   test("converts the emergency floor and goals before allocating by priority", () => {
@@ -350,11 +562,74 @@ describe("calculateFinanceForecast", () => {
     assert.equal(expected.finalBalance, 500);
     assert.equal(expected.availableForGoals, 400);
     assert.equal(expected.goalGap, 75);
-    assertClose(expected.fundedPercent, (400 / 475) * 100);
+    assertClose(expected.fundedPercent, (350 / 475) * 100);
     assert.deepEqual(expected.affordableGoalIds, ["high-first", "high-second"]);
     assert.deepEqual(expected.deferredGoalIds, [
       "medium-unaffordable",
       "low-affordable-but-blocked",
     ]);
+  });
+
+  test("deducts only priority-approved active goals from the cash chart at the final point", () => {
+    const expected = calculateFinanceForecast(
+      forecastInput({
+        goals: [
+          {
+            id: "high-approved",
+            name: "High priority purchase",
+            amount: 1_500,
+            currency: "USD",
+            priority: "HIGH",
+          },
+          {
+            id: "medium-approved",
+            name: "Medium priority purchase",
+            amount: 1_000,
+            currency: "USD",
+            priority: "MEDIUM",
+          },
+          {
+            id: "low-pending",
+            name: "Low priority purchase",
+            amount: 200,
+            currency: "USD",
+            priority: "LOW",
+          },
+          {
+            id: "previously-funded",
+            name: "Previously funded purchase",
+            amount: 500,
+            currency: "USD",
+            priority: "HIGH",
+            status: "FUNDED",
+          },
+        ],
+      }),
+    ).results.expected;
+    const finalPoint = expected.points.at(-1);
+
+    assert.equal(expected.finalBalance, 4_000);
+    assert.equal(expected.availableForGoals, 2_500);
+    assert.equal(expected.goalSpend, 2_500);
+    assert.deepEqual(expected.affordableGoalIds, [
+      "high-approved",
+      "medium-approved",
+    ]);
+    assert.deepEqual(expected.deferredGoalIds, ["low-pending"]);
+
+    for (const point of expected.points.slice(0, -1)) {
+      assert.equal(point.goalPurchases, 0);
+      assert.equal(point.cashAfterGoals, point.balance);
+    }
+
+    assert.deepEqual(finalPoint && {
+      balance: finalPoint.balance,
+      goalPurchases: finalPoint.goalPurchases,
+      cashAfterGoals: finalPoint.cashAfterGoals,
+    }, {
+      balance: expected.finalBalance,
+      goalPurchases: expected.goalSpend,
+      cashAfterGoals: 1_500,
+    });
   });
 });

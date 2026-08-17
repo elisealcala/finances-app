@@ -17,12 +17,15 @@ import type { AccountWithBalance } from "@/types/finances";
 
 export function AccountBalanceSummary({
   accounts,
+  hiddenAccountIds = new Set(),
 }: {
   accounts: AccountWithBalance[];
+  hiddenAccountIds?: ReadonlySet<string>;
 }) {
-  const totals = sumActiveAccountBalances(accounts);
+  const totals = sumActiveAccountBalances(accounts, hiddenAccountIds);
   const activeAccountCount = accounts.filter(
-    (account) => !account.isArchived,
+    (account) =>
+      !account.isArchived && !hiddenAccountIds.has(account.id),
   ).length;
 
   return (

@@ -2,13 +2,24 @@ import {
   addDays,
   addMonths,
   differenceInCalendarDays,
+  getDaysInMonth,
   isAfter,
   isBefore,
   isEqual,
+  setDate,
+  startOfDay,
+  startOfMonth,
 } from "date-fns";
 
 export const FINANCE_CURRENCIES = ["PEN", "USD", "EUR"] as const;
 export type FinanceCurrency = (typeof FINANCE_CURRENCIES)[number];
+
+export const FINANCE_CYCLE_OPENING_ACCOUNT_TYPES = [
+  "BANK",
+  "CASH",
+  "SAVINGS",
+  "CREDIT_CARD",
+] as const;
 
 export const FINANCE_CYCLE_KINDS = [
   "WEEK",
@@ -47,12 +58,16 @@ export type FinanceCycleForecastInput = {
   openingCurrency: FinanceCurrency;
   monthlyIncome: number;
   incomeCurrency: FinanceCurrency;
+  incomeDayOfMonth?: number;
   monthlyHousehold: number;
   householdCurrency: FinanceCurrency;
+  householdDayOfMonth?: number;
   monthlyFlexible: number;
   flexibleCurrency: FinanceCurrency;
+  flexibleDayOfMonth?: number;
   monthlyDebt: number;
   debtCurrency: FinanceCurrency;
+  debtDayOfMonth?: number;
   emergencyFloor: number;
   emergencyCurrency: FinanceCurrency;
   incomeVariance: number;
@@ -64,6 +79,15 @@ export type FinanceCycleForecastInput = {
 export type FinanceProjectionPoint = {
   date: Date;
   balance: number;
+  goalPurchases: number;
+  cashAfterGoals: number;
+  openingBalance: number;
+  income: number;
+  householdSpending: number;
+  flexibleSpending: number;
+  debtPayments: number;
+  totalExpenses: number;
+  netChange: number;
 };
 
 export type FinanceScenarioResult = {
@@ -74,6 +98,7 @@ export type FinanceScenarioResult = {
   finalBalance: number;
   availableForGoals: number;
   goalTotal: number;
+  goalSpend: number;
   goalGap: number;
   fundedPercent: number;
   requiredPerPeriod: number;
@@ -139,38 +164,108 @@ function durationInMonths(input: FinanceCycleForecastInput) {
   if (input.kind === "WEEK") return 12 / 52;
   if (input.kind === "THREE_MONTHS") return 3;
   if (input.kind === "SIX_MONTHS") return 6;
-  return Math.max(
-    differenceInCalendarDays(input.endDate, input.startDate) /
-      AVERAGE_DAYS_PER_MONTH,
-    1 / AVERAGE_DAYS_PER_MONTH,
+
+  if (!isAfter(input.endDate, input.startDate)) {
+    return 1 / AVERAGE_DAYS_PER_MONTH;
+  }
+
+  let wholeMonths = 0;
+  let anchor = input.startDate;
+  let nextAnchor = addMonths(input.startDate, 1);
+  while (!isAfter(nextAnchor, input.endDate)) {
+    wholeMonths += 1;
+    anchor = nextAnchor;
+    nextAnchor = addMonths(input.startDate, wholeMonths + 1);
+  }
+  if (isEqual(anchor, input.endDate)) return wholeMonths;
+
+  const daysInPartialMonth = Math.max(
+    1,
+    differenceInCalendarDays(nextAnchor, anchor),
   );
-}
-
-function projectionDates(input: FinanceCycleForecastInput) {
-  if (input.kind === "WEEK") return [input.startDate, input.endDate];
-
-  const dates = [input.startDate];
-  let cursor = addMonths(input.startDate, 1);
-  while (isBefore(cursor, input.endDate)) {
-    dates.push(cursor);
-    cursor = addMonths(cursor, 1);
-  }
-  if (!isEqual(dates.at(-1) ?? input.startDate, input.endDate)) {
-    dates.push(input.endDate);
-  }
-  return dates;
-}
-
-function monthsElapsed(
-  startDate: Date,
-  pointDate: Date,
-  endDate: Date,
-  totalMonths: number,
-) {
-  if (isEqual(pointDate, endDate)) return totalMonths;
-  return Math.max(
+  const partialDays = Math.max(
     0,
-    differenceInCalendarDays(pointDate, startDate) / AVERAGE_DAYS_PER_MONTH,
+    differenceInCalendarDays(input.endDate, anchor),
+  );
+  return wholeMonths + partialDays / daysInPartialMonth;
+}
+
+type ScheduledCashFlow = {
+  income: number;
+  household: number;
+  flexible: number;
+  debt: number;
+};
+
+function dayOfMonth(value: number | undefined) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(31, Math.max(1, Math.trunc(value ?? 1)));
+}
+
+function dateKey(value: Date) {
+  return startOfDay(value).getTime();
+}
+
+function scheduledDateInMonth(month: Date, scheduledDay: number) {
+  const monthStart = startOfMonth(month);
+  return setDate(monthStart, Math.min(scheduledDay, getDaysInMonth(monthStart)));
+}
+
+function scheduledCashFlows(input: FinanceCycleForecastInput) {
+  const flows = new Map<number, ScheduledCashFlow>();
+  const startDate = startOfDay(input.startDate);
+  const endDate = startOfDay(input.endDate);
+  const schedules = [
+    { key: "income" as const, day: dayOfMonth(input.incomeDayOfMonth) },
+    {
+      key: "household" as const,
+      day: dayOfMonth(input.householdDayOfMonth),
+    },
+    {
+      key: "flexible" as const,
+      day: dayOfMonth(input.flexibleDayOfMonth),
+    },
+    { key: "debt" as const, day: dayOfMonth(input.debtDayOfMonth) },
+  ];
+
+  let month = startOfMonth(startDate);
+  const finalMonth = startOfMonth(endDate);
+  while (!isAfter(month, finalMonth)) {
+    for (const schedule of schedules) {
+      const scheduledDate = scheduledDateInMonth(month, schedule.day);
+      if (isBefore(scheduledDate, startDate) || isAfter(scheduledDate, endDate)) {
+        continue;
+      }
+
+      const key = dateKey(scheduledDate);
+      const flow = flows.get(key) ?? {
+        income: 0,
+        household: 0,
+        flexible: 0,
+        debt: 0,
+      };
+      flow[schedule.key] += 1;
+      flows.set(key, flow);
+    }
+    month = addMonths(month, 1);
+  }
+
+  return flows;
+}
+
+function projectionDates(
+  input: FinanceCycleForecastInput,
+  flows: Map<number, ScheduledCashFlow>,
+) {
+  const dateByKey = new Map<number, Date>();
+  dateByKey.set(dateKey(input.startDate), input.startDate);
+  dateByKey.set(dateKey(input.endDate), input.endDate);
+  for (const key of flows.keys()) {
+    if (!dateByKey.has(key)) dateByKey.set(key, new Date(key));
+  }
+
+  return [...dateByKey.values()].sort(
+    (left, right) => dateKey(left) - dateKey(right),
   );
 }
 
@@ -192,6 +287,7 @@ function allocateGoals(
 
   let remaining = Math.max(0, available);
   let blockedByPriority = false;
+  let goalSpend = 0;
   const affordableGoalIds: string[] = [];
   const deferredGoalIds: string[] = [];
 
@@ -206,13 +302,14 @@ function allocateGoals(
     if (!blockedByPriority && convertedAmount <= remaining) {
       affordableGoalIds.push(id);
       remaining -= convertedAmount;
+      goalSpend += convertedAmount;
     } else {
       blockedByPriority = true;
       deferredGoalIds.push(id);
     }
   }
 
-  return { affordableGoalIds, deferredGoalIds };
+  return { affordableGoalIds, deferredGoalIds, goalSpend };
 }
 
 export function calculateFinanceForecast(
@@ -279,20 +376,45 @@ export function calculateFinanceForecast(
     expected: 1,
     optimistic: 1 + variance,
   };
-  const dates = projectionDates(input);
+  const cashFlows = scheduledCashFlows(input);
+  const dates = projectionDates(input, cashFlows);
 
   const results = Object.fromEntries(
     FINANCE_SCENARIOS.map((scenario) => {
       const monthlyIncome = baseMonthlyIncome * factors[scenario];
       const monthlyNet =
         monthlyIncome - monthlyHousehold - monthlyFlexible - monthlyDebt;
-      const finalBalance = openingBalance + monthlyNet * durationMonths;
+      let income = 0;
+      let householdSpending = 0;
+      let flexibleSpending = 0;
+      let debtPayments = 0;
+      const points = dates.map((date) => {
+        const cashFlow = cashFlows.get(dateKey(date));
+        income += monthlyIncome * (cashFlow?.income ?? 0);
+        householdSpending += monthlyHousehold * (cashFlow?.household ?? 0);
+        flexibleSpending += monthlyFlexible * (cashFlow?.flexible ?? 0);
+        debtPayments += monthlyDebt * (cashFlow?.debt ?? 0);
+        const totalExpenses =
+          householdSpending + flexibleSpending + debtPayments;
+        const netChange = income - totalExpenses;
+
+        return {
+          date,
+          balance: openingBalance + netChange,
+          goalPurchases: 0,
+          cashAfterGoals: openingBalance + netChange,
+          openingBalance,
+          income,
+          householdSpending,
+          flexibleSpending,
+          debtPayments,
+          totalExpenses,
+          netChange,
+        };
+      });
+      const finalBalance = points.at(-1)?.balance ?? openingBalance;
       const availableForGoals = Math.max(0, finalBalance - emergencyFloor);
       const goalGap = Math.max(0, goalTotal - availableForGoals);
-      const fundedPercent =
-        goalTotal > 0
-          ? Math.min(100, (Math.min(goalTotal, availableForGoals) / goalTotal) * 100)
-          : 0;
       const requiredPerPeriod = Math.max(
         0,
         (goalTotal + emergencyFloor - openingBalance) / periods,
@@ -300,19 +422,19 @@ export function calculateFinanceForecast(
       const extraPerPeriod = goalGap / periods;
       const periodRoom =
         input.kind === "WEEK" ? monthlyNet * (12 / 52) : monthlyNet;
-      const points = dates.map((date) => ({
-        date,
-        balance:
-          openingBalance +
-          monthlyNet *
-            monthsElapsed(input.startDate, date, input.endDate, durationMonths),
-      }));
       const allocation = allocateGoals(
         input.goals,
         availableForGoals,
         input.displayCurrency,
         rates,
       );
+      const finalPoint = points.at(-1);
+      if (finalPoint) {
+        finalPoint.goalPurchases = allocation.goalSpend;
+        finalPoint.cashAfterGoals = finalPoint.balance - allocation.goalSpend;
+      }
+      const fundedPercent =
+        goalTotal > 0 ? (allocation.goalSpend / goalTotal) * 100 : 0;
 
       const result: FinanceScenarioResult = {
         scenario,

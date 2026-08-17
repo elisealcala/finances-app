@@ -1,12 +1,32 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import Link from "next/link";
 import { Highlight, themes } from "prism-react-renderer";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  obsidianHeadingSlug,
+  resolveObsidianWikiLinks,
+  type ObsidianLinkDocument,
+} from "@/lib/obsidian-links";
+
+function headingText(children: React.ReactNode): string {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  if (Array.isArray(children)) return children.map(headingText).join("");
+  if (children && typeof children === "object" && "props" in children) {
+    return headingText(
+      (children as React.ReactElement<{ children?: React.ReactNode }>).props
+        .children,
+    );
+  }
+  return "";
+}
 
 function KnowledgeCodeBlock({
   code,
@@ -74,16 +94,29 @@ function KnowledgeCodeBlock({
 export function KnowledgeMarkdown({
   content,
   compact = false,
+  currentRelativePath,
+  documents = [],
 }: {
   content: string;
   compact?: boolean;
+  currentRelativePath?: string;
+  documents?: ObsidianLinkDocument[];
 }) {
+  const resolvedContent = currentRelativePath
+    ? resolveObsidianWikiLinks({
+        content,
+        currentRelativePath,
+        documents,
+      })
+    : content;
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
           <h1
+            id={obsidianHeadingSlug(headingText(children))}
             className={cn(
               "font-semibold tracking-tight",
               compact ? "mb-2 text-base" : "mb-5 text-3xl",
@@ -94,6 +127,7 @@ export function KnowledgeMarkdown({
         ),
         h2: ({ children }) => (
           <h2
+            id={obsidianHeadingSlug(headingText(children))}
             className={cn(
               "font-semibold tracking-tight",
               compact ? "mt-3 mb-1 text-sm" : "mt-8 mb-3 text-xl",
@@ -103,7 +137,10 @@ export function KnowledgeMarkdown({
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className={compact ? "mt-2 text-sm font-semibold" : "mt-6 mb-2 text-lg font-semibold"}>
+          <h3
+            id={obsidianHeadingSlug(headingText(children))}
+            className={compact ? "mt-2 text-sm font-semibold" : "mt-6 mb-2 text-lg font-semibold"}
+          >
             {children}
           </h3>
         ),
@@ -127,10 +164,19 @@ export function KnowledgeMarkdown({
         ),
         a: ({ href, children }) => {
           const external = href?.startsWith("http://") || href?.startsWith("https://");
+          const className =
+            "text-primary font-medium underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary";
+          if (href?.startsWith("/")) {
+            return (
+              <Link href={href} className={className}>
+                {children}
+              </Link>
+            );
+          }
           return (
             <a
               href={href}
-              className="text-primary font-medium underline underline-offset-4"
+              className={className}
               target={external ? "_blank" : undefined}
               rel={external ? "noreferrer" : undefined}
             >
@@ -162,7 +208,7 @@ export function KnowledgeMarkdown({
         td: ({ children }) => <td className="border px-3 py-2">{children}</td>,
       }}
     >
-      {content}
+      {resolvedContent}
     </ReactMarkdown>
   );
 }

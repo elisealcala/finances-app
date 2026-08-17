@@ -27,8 +27,6 @@ export default async function FinancesPage() {
     );
   }
   void queryClient.prefetchQuery(trpc.debt.list.queryOptions());
-  void queryClient.prefetchQuery(trpc.finances.cycle.list.queryOptions());
-  void queryClient.prefetchQuery(trpc.finances.cycle.defaults.queryOptions());
 
   return (
     <HydrateClient>

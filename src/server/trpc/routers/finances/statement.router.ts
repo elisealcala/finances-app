@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import type { CreditCardStatement as PrismaStatement } from "@/generated/prisma/client";
 import { TRPCError } from "@trpc/server";
 import type { Currency } from "@/generated/prisma/client";
+import { calculateStatementBalances } from "@/lib/statement-balances";
 import {
   createStatementSchema,
   updateStatementSchema,
@@ -39,18 +40,15 @@ export const statementRouter = router({
             select: { id: true, name: true, currency: true, color: true },
           },
           expenses: {
-            select: { amount: true, currency: true },
+            select: { amount: true, currency: true, paymentStatus: true },
           },
           _count: { select: { expenses: true } },
         },
       });
 
       const statements = rawStatements.map((s) => {
-        const totalsByCurrency: Record<string, number> = {};
-        for (const e of s.expenses) {
-          const cur = e.currency ?? s.account.currency;
-          totalsByCurrency[cur] = (totalsByCurrency[cur] ?? 0) + Number(e.amount);
-        }
+        const { totalsByCurrency, outstandingByCurrency } =
+          calculateStatementBalances(s.expenses, s.account.currency);
 
         const { expenses: _expenses, _count, ...rest } = s;
         return {
@@ -58,6 +56,7 @@ export const statementRouter = router({
           account: s.account,
           expenseCount: _count.expenses,
           totalsByCurrency,
+          outstandingByCurrency,
         };
       });
 

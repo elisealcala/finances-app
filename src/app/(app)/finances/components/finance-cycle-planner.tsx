@@ -3,10 +3,13 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { format, parseISO } from "date-fns";
 import {
+  Archive,
   ArrowRight,
   CalendarRange,
   CheckCircle2,
+  Clock3,
   Loader2,
+  Pencil,
   Plus,
   Save,
   Sparkles,
@@ -53,7 +56,7 @@ import {
   type FinanceGoalStatus,
   type FinanceScenario,
 } from "@/lib/finance-cycle";
-import { CURRENCY_LABELS, formatCurrency } from "@/lib/utils";
+import { CURRENCY_LABELS, cn, formatCurrency } from "@/lib/utils";
 import { FinanceCycleChart } from "./finance-cycle-chart";
 
 type GoalForm = {
@@ -76,12 +79,16 @@ type CycleForm = {
   openingCurrency: FinanceCurrency;
   monthlyIncome: number;
   incomeCurrency: FinanceCurrency;
+  incomeDayOfMonth: number;
   monthlyHousehold: number;
   householdCurrency: FinanceCurrency;
+  householdDayOfMonth: number;
   monthlyFlexible: number;
   flexibleCurrency: FinanceCurrency;
+  flexibleDayOfMonth: number;
   monthlyDebt: number;
   debtCurrency: FinanceCurrency;
+  debtDayOfMonth: number;
   emergencyFloor: number;
   emergencyCurrency: FinanceCurrency;
   incomeVariance: number;
@@ -127,6 +134,36 @@ const PRIORITY_LABELS: Record<FinanceGoalPriority, string> = {
   LOW: "Low",
 };
 
+const CYCLE_STATUS_CONFIG: Record<
+  CycleForm["status"],
+  {
+    label: string;
+    icon: typeof Sparkles;
+    className: string;
+  }
+> = {
+  ACTIVE: {
+    label: "Active",
+    icon: Sparkles,
+    className: "bg-emerald-600 text-white",
+  },
+  DRAFT: {
+    label: "Draft",
+    icon: Clock3,
+    className: "bg-slate-500 text-white",
+  },
+  CLOSED: {
+    label: "Closed",
+    icon: CheckCircle2,
+    className: "bg-sky-700 text-white",
+  },
+  ARCHIVED: {
+    label: "Archived",
+    icon: Archive,
+    className: "",
+  },
+};
+
 function dateInput(date: Date) {
   return format(date, "yyyy-MM-dd");
 }
@@ -139,6 +176,11 @@ function dateFromInput(value: string) {
 function roundMoney(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function validDayOfMonth(value: number | undefined) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(31, Math.max(1, Math.trunc(value ?? 1)));
 }
 
 function cycleTitle(kind: FinanceCycleKind, startDate: Date) {
@@ -158,12 +200,16 @@ function emptyCycleForm(now = new Date()): CycleForm {
     openingCurrency: "PEN",
     monthlyIncome: 0,
     incomeCurrency: "PEN",
+    incomeDayOfMonth: 1,
     monthlyHousehold: 0,
     householdCurrency: "PEN",
+    householdDayOfMonth: 1,
     monthlyFlexible: 0,
     flexibleCurrency: "PEN",
+    flexibleDayOfMonth: 1,
     monthlyDebt: 0,
     debtCurrency: "PEN",
+    debtDayOfMonth: 1,
     emergencyFloor: 0,
     emergencyCurrency: "PEN",
     incomeVariance: 10,
@@ -187,12 +233,16 @@ function formFromCycle(cycle: PersistedCycle): CycleForm {
     openingCurrency: cycle.openingCurrency,
     monthlyIncome: roundMoney(cycle.monthlyIncome),
     incomeCurrency: cycle.incomeCurrency,
+    incomeDayOfMonth: validDayOfMonth(cycle.incomeDayOfMonth),
     monthlyHousehold: roundMoney(cycle.monthlyHousehold),
     householdCurrency: cycle.householdCurrency,
+    householdDayOfMonth: validDayOfMonth(cycle.householdDayOfMonth),
     monthlyFlexible: roundMoney(cycle.monthlyFlexible),
     flexibleCurrency: cycle.flexibleCurrency,
+    flexibleDayOfMonth: validDayOfMonth(cycle.flexibleDayOfMonth),
     monthlyDebt: roundMoney(cycle.monthlyDebt),
     debtCurrency: cycle.debtCurrency,
+    debtDayOfMonth: validDayOfMonth(cycle.debtDayOfMonth),
     emergencyFloor: roundMoney(cycle.emergencyFloor),
     emergencyCurrency: cycle.emergencyCurrency,
     incomeVariance: cycle.incomeVariance,
@@ -218,26 +268,32 @@ function forecastInput(form: CycleForm): FinanceCycleForecastInput {
     openingCurrency: form.openingCurrency,
     monthlyIncome: roundMoney(form.monthlyIncome),
     incomeCurrency: form.incomeCurrency,
+    incomeDayOfMonth: form.incomeDayOfMonth,
     monthlyHousehold: roundMoney(form.monthlyHousehold),
     householdCurrency: form.householdCurrency,
+    householdDayOfMonth: form.householdDayOfMonth,
     monthlyFlexible: roundMoney(form.monthlyFlexible),
     flexibleCurrency: form.flexibleCurrency,
+    flexibleDayOfMonth: form.flexibleDayOfMonth,
     monthlyDebt: roundMoney(form.monthlyDebt),
     debtCurrency: form.debtCurrency,
+    debtDayOfMonth: form.debtDayOfMonth,
     emergencyFloor: roundMoney(form.emergencyFloor),
     emergencyCurrency: form.emergencyCurrency,
     incomeVariance: form.incomeVariance,
     penPerUsd: form.penPerUsd,
     usdPerEur: form.usdPerEur,
-    goals: form.goals.map((goal, position) => ({
-      id: goal.key,
-      name: goal.name || `Goal ${position + 1}`,
-      amount: roundMoney(goal.amount),
-      currency: goal.currency,
-      priority: goal.priority,
-      status: goal.status,
-      position,
-    })),
+    goals: form.goals
+      .filter((goal) => goal.name.trim().length > 0 && goal.amount > 0)
+      .map((goal, position) => ({
+        id: goal.key,
+        name: goal.name,
+        amount: roundMoney(goal.amount),
+        currency: goal.currency,
+        priority: goal.priority,
+        status: goal.status,
+        position,
+      })),
   };
 }
 
@@ -253,12 +309,16 @@ function mutationInput(form: CycleForm) {
     openingCurrency: form.openingCurrency,
     monthlyIncome: roundMoney(form.monthlyIncome),
     incomeCurrency: form.incomeCurrency,
+    incomeDayOfMonth: form.incomeDayOfMonth,
     monthlyHousehold: roundMoney(form.monthlyHousehold),
     householdCurrency: form.householdCurrency,
+    householdDayOfMonth: form.householdDayOfMonth,
     monthlyFlexible: roundMoney(form.monthlyFlexible),
     flexibleCurrency: form.flexibleCurrency,
+    flexibleDayOfMonth: form.flexibleDayOfMonth,
     monthlyDebt: roundMoney(form.monthlyDebt),
     debtCurrency: form.debtCurrency,
+    debtDayOfMonth: form.debtDayOfMonth,
     emergencyFloor: roundMoney(form.emergencyFloor),
     emergencyCurrency: form.emergencyCurrency,
     incomeVariance: form.incomeVariance,
@@ -337,12 +397,18 @@ function MoneyField({
   currency,
   onAmountChange,
   onCurrencyChange,
+  dayOfMonth,
+  dayLabel,
+  onDayOfMonthChange,
 }: {
   label: string;
   amount: number;
   currency: FinanceCurrency;
   onAmountChange: (amount: number) => void;
   onCurrencyChange: (currency: FinanceCurrency) => void;
+  dayOfMonth?: number;
+  dayLabel?: string;
+  onDayOfMonthChange?: (day: number) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -373,7 +439,146 @@ function MoneyField({
           </SelectContent>
         </Select>
       </div>
+      {onDayOfMonthChange ? (
+        <div className="flex items-center gap-2">
+          <Label className="text-muted-foreground text-xs">
+            {dayLabel ?? "Scheduled on day"}
+          </Label>
+          <Input
+            aria-label={`${label} day of month`}
+            className="h-8 w-16"
+            max={31}
+            min={1}
+            step={1}
+            type="number"
+            value={validDayOfMonth(dayOfMonth)}
+            onChange={(event) =>
+              onDayOfMonthChange(validDayOfMonth(Number(event.target.value)))
+            }
+          />
+          <span className="text-muted-foreground text-xs">of each month</span>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function CycleSummaryCard({
+  cycle,
+  isSelected,
+  onSelect,
+}: {
+  cycle: PersistedCycle;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const config = CYCLE_STATUS_CONFIG[cycle.status];
+  const StatusIcon = config.icon;
+  const expectedClosing =
+    cycle.closingAmount ??
+    (() => {
+      const forecast = calculateFinanceForecast(forecastInput(formFromCycle(cycle)));
+      return forecast.results.expected.finalBalance - forecast.results.expected.goalSpend;
+    })();
+
+  return (
+    <Card
+      className={cn(
+        "h-full gap-4 py-4 transition-colors",
+        isSelected
+          ? "border-primary bg-primary/[0.025] ring-primary/15 ring-2"
+          : "hover:border-primary/40",
+      )}
+    >
+      <CardHeader className="px-4 sm:px-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            className={config.className}
+            variant={cycle.status === "ARCHIVED" ? "outline" : "default"}
+          >
+            <StatusIcon className="size-3" /> {config.label}
+          </Badge>
+          <span className="text-muted-foreground text-xs">
+            {CYCLE_LABELS[cycle.kind]}
+          </span>
+        </div>
+        <CardTitle className="mt-2 text-base leading-5">
+          <button
+            type="button"
+            className="hover:text-primary text-left transition-colors"
+            onClick={() => onSelect(cycle.id)}
+          >
+            {cycle.title}
+          </button>
+        </CardTitle>
+        <CardAction>
+          <Button
+            type="button"
+            size="sm"
+            variant={isSelected ? "default" : "ghost"}
+            aria-label={`Edit ${cycle.title}`}
+            onClick={() => onSelect(cycle.id)}
+          >
+            <Pencil className="size-3.5" />
+            {isSelected ? "Editing" : "Edit"}
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-3 px-4 sm:px-4">
+        <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span>
+            {format(cycle.startDate, "MMM d, yyyy")} – {format(cycle.endDate, "MMM d, yyyy")}
+          </span>
+          <span>
+            {cycle.goals.length} {cycle.goals.length === 1 ? "goal" : "goals"}
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-3 border-t pt-3">
+          <span className="text-muted-foreground text-xs">
+            {cycle.status === "CLOSED" ? "Closing cash" : "Expected cash"}
+          </span>
+          <span className="text-sm font-semibold tabular-nums">
+            {formatCurrency(
+              expectedClosing,
+              cycle.closingCurrency ?? cycle.displayCurrency,
+            )}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CycleGroup({
+  title,
+  cycles,
+  selectedCycleId,
+  onSelect,
+}: {
+  title: string;
+  cycles: PersistedCycle[];
+  selectedCycleId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  if (cycles.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <Badge variant="secondary">{cycles.length}</Badge>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {cycles.map((cycle) => (
+          <CycleSummaryCard
+            key={cycle.id}
+            cycle={cycle}
+            isSelected={cycle.id === selectedCycleId}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -433,9 +638,22 @@ function FinanceCyclePlannerContent({
     (cycle) => cycle.id === form.previousCycleId,
   );
   const isPending = createCycle.isPending || updateCycle.isPending;
+  const activeCycles = cycles.filter((cycle) => cycle.status === "ACTIVE");
+  const draftCycles = cycles.filter((cycle) => cycle.status === "DRAFT");
+  const historyCycles = cycles.filter((cycle) =>
+    ["CLOSED", "ARCHIVED"].includes(cycle.status),
+  );
 
   function patchForm(patch: Partial<CycleForm>) {
     setForm((current) => ({ ...current, ...patch }));
+  }
+
+  function scrollToEditor() {
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("cycle-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function selectKind(kind: FinanceCycleKind) {
@@ -471,13 +689,19 @@ function FinanceCyclePlannerContent({
     if (!cycle) return;
     setSelectedCycleId(id);
     setForm(formFromCycle(cycle));
+    scrollToEditor();
   }
 
   function startNewCycle() {
-    const previous = selectedCycle ?? cycles[0];
+    const previous =
+      selectedCycle ??
+      activeCycles[0] ??
+      historyCycles.find((cycle) => cycle.status === "CLOSED") ??
+      cycles[0];
     if (!previous) {
       setSelectedCycleId(null);
       setForm(emptyCycleForm());
+      scrollToEditor();
       return;
     }
     const previousForecast = calculateFinanceForecast(
@@ -495,7 +719,8 @@ function FinanceCyclePlannerContent({
       endDate: dateInput(deriveFinanceCycleEndDate(startDate, kind)),
       openingAmount: roundMoney(
         previous.closingAmount ??
-          previousForecast.results.expected.finalBalance,
+          previousForecast.results.expected.finalBalance -
+            previousForecast.results.expected.goalSpend,
       ),
       openingCurrency:
         previous.closingCurrency ?? previous.displayCurrency,
@@ -505,6 +730,7 @@ function FinanceCyclePlannerContent({
         .filter((goal) => goal.status !== "FUNDED")
         .map((goal) => ({ ...goal, key: `${goal.id}-carry` })),
     });
+    scrollToEditor();
   }
 
   async function save(event: FormEvent) {
@@ -537,7 +763,9 @@ function FinanceCyclePlannerContent({
 
   async function closeSelectedCycle() {
     if (!selectedCycleId) return;
-    if (!window.confirm("Close this cycle and carry its expected ending balance forward?")) {
+    if (!window.confirm(
+      "Close this cycle, record any fully funded goal purchases, and carry the remaining cash forward?",
+    )) {
       return;
     }
     try {
@@ -598,41 +826,72 @@ function FinanceCyclePlannerContent({
           : `${affordableNames.length ? `Fund ${affordableNames.join(" and ")}. ` : ""}${deferredNames.length ? `Delay ${deferredNames.join(" and ")}, ` : ""}or free up ${formatCurrency(result.extraPerPeriod, form.displayCurrency)} per ${periodLabel} to close the gap.`;
 
   return (
-    <form className="space-y-6" onSubmit={save}>
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarRange className="size-5" /> Savings cycles
+            <CalendarRange className="size-5" /> Your savings cycles
           </CardTitle>
           <CardDescription>
-            Build a week, three-month, six-month, or custom plan. Previous
-            cycles carry one closing balance forward, while transactions remain
-            counted once by date.
+            Choose any cycle to review or edit its dates, assumptions, and
+            purchase goals.
           </CardDescription>
-          <CardAction className="flex flex-wrap justify-end gap-2">
-            {cycles.length > 0 ? (
-              <Select
-                value={selectedCycleId ?? undefined}
-                onValueChange={loadCycle}
-              >
-                <SelectTrigger className="w-52">
-                  <SelectValue placeholder="Unsaved cycle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cycles.map((cycle) => (
-                    <SelectItem key={cycle.id} value={cycle.id}>
-                      {cycle.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            <Button type="button" variant="outline" onClick={startNewCycle}>
-              <Plus /> New cycle
+          <CardAction>
+            <Button type="button" onClick={startNewCycle}>
+              <Plus /> {cycles.length === 0 ? "Create first cycle" : "New cycle"}
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-6">
+          {cycles.length === 0 ? (
+            <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
+              No saved cycles yet. Start with a week, three-month, six-month, or
+              custom plan.
+            </div>
+          ) : (
+            <>
+              <CycleGroup
+                title="Current"
+                cycles={activeCycles}
+                selectedCycleId={selectedCycleId}
+                onSelect={loadCycle}
+              />
+              <CycleGroup
+                title="Drafts"
+                cycles={draftCycles}
+                selectedCycleId={selectedCycleId}
+                onSelect={loadCycle}
+              />
+              <CycleGroup
+                title="History"
+                cycles={historyCycles}
+                selectedCycleId={selectedCycleId}
+                onSelect={loadCycle}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <form className="space-y-6" onSubmit={save}>
+        <Card id="cycle-editor" className="scroll-mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Pencil className="size-5" />
+              {selectedCycleId ? "Edit cycle" : "Create a cycle"}
+            </CardTitle>
+            <CardDescription>
+              Build a week, three-month, six-month, or custom plan. Previous
+              cycles can carry one closing balance forward, while transactions
+              remain counted once by date.
+            </CardDescription>
+            <CardAction>
+              <Badge variant="outline">
+                {selectedCycleId ? "Saved cycle" : "Not saved yet"}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="space-y-2">
               <Label>Cycle length</Label>
@@ -711,8 +970,8 @@ function FinanceCyclePlannerContent({
                 ? "This cycle can contain two three-month reviews and roughly 26 weekly check-ins."
                 : "Weekly check-ins can roll up into this cycle without duplicating transactions."}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Forecast scenario">
@@ -743,10 +1002,13 @@ function FinanceCyclePlannerContent({
         <Card>
           <CardHeader>
             <CardDescription>
-              Cash on {format(forecast.endDate, "MMM d")}
+              Cash after whole goal purchases on {format(forecast.endDate, "MMM d")}
             </CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCurrency(result.finalBalance, form.displayCurrency)}
+              {formatCurrency(
+                result.finalBalance - result.goalSpend,
+                form.displayCurrency,
+              )}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -778,8 +1040,8 @@ function FinanceCyclePlannerContent({
             <CardHeader>
               <CardTitle>Projected cash runway</CardTitle>
               <CardDescription>
-                Opening balance plus income, household spending, flexible
-                spending, and debt inside this date range.
+                Solid line includes goals this plan can fund at the end of the
+                cycle; the dashed line is cash before those goal purchases.
               </CardDescription>
               <CardAction>
                 <Badge variant="outline" className="capitalize">
@@ -903,16 +1165,33 @@ function FinanceCyclePlannerContent({
                 <div className="flex items-center justify-between text-sm">
                   <span>
                     {formatCurrency(
-                      Math.min(result.availableForGoals, result.goalTotal),
+                      result.availableForGoals,
                       form.displayCurrency,
                     )}{" "}
-                    safely available
+                    available above emergency floor
                   </span>
                   <span className="text-muted-foreground">
                     {result.fundedPercent.toFixed(0)}% funded
                   </span>
                 </div>
                 <Progress value={result.fundedPercent} />
+                <p className="text-muted-foreground text-xs">
+                  {formatCurrency(result.availableForGoals, form.displayCurrency)} is
+                  reserved toward your goals. {formatCurrency(
+                    result.goalSpend,
+                    form.displayCurrency,
+                  )} in whole goals can be purchased, leaving {formatCurrency(
+                    result.finalBalance - result.goalSpend,
+                    form.displayCurrency,
+                  )} in cash after those purchases.
+                </p>
+                {forecast.goalTotal > 0 && result.goalSpend === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    No whole goal is funded yet, so both chart lines are the
+                    same. The next goal stays pending until its full amount is
+                    available.
+                  </p>
+                ) : null}
               </div>
 
               <div className="border-chart-1/30 bg-chart-1/5 rounded-xl border p-4">
@@ -933,7 +1212,7 @@ function FinanceCyclePlannerContent({
           <CardHeader>
             <CardTitle>Forecast assumptions</CardTitle>
             <CardDescription>
-              Recent activity pre-fills the first cycle. Every amount keeps its
+              Choose when each monthly amount lands. Every amount keeps its
               source currency and is converted only for display.
             </CardDescription>
           </CardHeader>
@@ -972,7 +1251,7 @@ function FinanceCyclePlannerContent({
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <MoneyField
-                label="Opening cash"
+                label="Opening cash (net of cards)"
                 amount={form.openingAmount}
                 currency={form.openingCurrency}
                 onAmountChange={(openingAmount) => patchForm({ openingAmount })}
@@ -988,6 +1267,11 @@ function FinanceCyclePlannerContent({
                 onCurrencyChange={(incomeCurrency) =>
                   patchForm({ incomeCurrency })
                 }
+                dayOfMonth={form.incomeDayOfMonth}
+                dayLabel="Received on day"
+                onDayOfMonthChange={(incomeDayOfMonth) =>
+                  patchForm({ incomeDayOfMonth })
+                }
               />
               <MoneyField
                 label="Household spending"
@@ -998,6 +1282,11 @@ function FinanceCyclePlannerContent({
                 }
                 onCurrencyChange={(householdCurrency) =>
                   patchForm({ householdCurrency })
+                }
+                dayOfMonth={form.householdDayOfMonth}
+                dayLabel="Paid on day"
+                onDayOfMonthChange={(householdDayOfMonth) =>
+                  patchForm({ householdDayOfMonth })
                 }
               />
               <MoneyField
@@ -1010,6 +1299,11 @@ function FinanceCyclePlannerContent({
                 onCurrencyChange={(flexibleCurrency) =>
                   patchForm({ flexibleCurrency })
                 }
+                dayOfMonth={form.flexibleDayOfMonth}
+                dayLabel="Paid on day"
+                onDayOfMonthChange={(flexibleDayOfMonth) =>
+                  patchForm({ flexibleDayOfMonth })
+                }
               />
               <MoneyField
                 label="Debt payments"
@@ -1018,6 +1312,11 @@ function FinanceCyclePlannerContent({
                 onAmountChange={(monthlyDebt) => patchForm({ monthlyDebt })}
                 onCurrencyChange={(debtCurrency) =>
                   patchForm({ debtCurrency })
+                }
+                dayOfMonth={form.debtDayOfMonth}
+                dayLabel="Paid on day"
+                onDayOfMonthChange={(debtDayOfMonth) =>
+                  patchForm({ debtDayOfMonth })
                 }
               />
               <MoneyField
@@ -1032,6 +1331,10 @@ function FinanceCyclePlannerContent({
                 }
               />
             </div>
+
+            <p className="text-muted-foreground text-xs">
+              Day 29–31 automatically uses the last day of shorter months.
+            </p>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -1124,6 +1427,7 @@ function FinanceCyclePlannerContent({
           </CardContent>
         </Card>
       </div>
-    </form>
+      </form>
+    </div>
   );
 }

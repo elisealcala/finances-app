@@ -8,6 +8,16 @@ export function useKnowledgeStatus() {
   return useQuery(trpc.knowledge.status.queryOptions());
 }
 
+export function useKnowledgeNavigation() {
+  const trpc = useTRPC();
+  return useQuery(trpc.knowledge.navigation.queryOptions());
+}
+
+export function useKnowledgeIndex() {
+  const trpc = useTRPC();
+  return useQuery(trpc.knowledge.index.queryOptions());
+}
+
 export function useKnowledgeDocuments(input?: {
   search?: string;
   tag?: string;
@@ -35,6 +45,15 @@ export function useSyncKnowledge() {
         }),
         queryClient.invalidateQueries({
           queryKey: trpc.knowledge.list.queryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: trpc.knowledge.navigation.queryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: trpc.knowledge.index.queryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: trpc.knowledge.get.queryKey(),
         }),
       ]);
     },

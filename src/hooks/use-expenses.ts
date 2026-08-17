@@ -66,7 +66,7 @@ export function useMarkExpensePaid() {
 
   return useMutation({
     ...trpc.finances.expense.markPaid.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: (expense) => {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.expense.list.queryKey(),
       });
@@ -76,6 +76,16 @@ export function useMarkExpensePaid() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.transfer.list.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.list.queryKey(),
+      });
+      if (expense.statementId) {
+        queryClient.invalidateQueries({
+          queryKey: trpc.finances.statement.getById.queryKey({
+            id: expense.statementId,
+          }),
+        });
+      }
     },
   });
 }

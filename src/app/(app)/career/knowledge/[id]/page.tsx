@@ -11,6 +11,8 @@ export default async function CareerKnowledgeDocumentPage({
   const { id } = await params;
   const queryClient = getQueryClient();
   void queryClient.prefetchQuery(trpc.knowledge.get.queryOptions({ id }));
+  void queryClient.prefetchQuery(trpc.knowledge.status.queryOptions());
+  void queryClient.prefetchQuery(trpc.knowledge.navigation.queryOptions());
 
   return (
     <HydrateClient>

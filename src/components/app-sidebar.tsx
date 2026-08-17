@@ -37,6 +37,7 @@ const navItems = [
     icon: Wallet,
     items: [
       { title: "Overview", url: "/finances" },
+      { title: "Cycle prediction", url: "/finances/cycle-prediction" },
       { title: "Accounts", url: "/finances/accounts" },
       { title: "Expenses", url: "/finances/expenses" },
       { title: "Income", url: "/finances/incomes" },

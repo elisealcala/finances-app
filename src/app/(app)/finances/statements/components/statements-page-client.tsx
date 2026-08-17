@@ -36,6 +36,7 @@ type StatementRow = CreditCardStatement & {
   account?: { name: string; currency: string; color: string | null };
   expenseCount?: number;
   totalsByCurrency?: Record<string, number>;
+  outstandingByCurrency?: Record<string, number>;
 };
 
 export function StatementsPageClient() {

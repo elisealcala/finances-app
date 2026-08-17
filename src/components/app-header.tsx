@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 
 const labels: Record<string, string> = {
   finances: "Finances",
+  "cycle-prediction": "Cycle prediction",
   accounts: "Accounts",
   expenses: "Expenses",
   incomes: "Income",

@@ -8,6 +8,7 @@ import type {
 import {
   calculateFinanceForecast,
   deriveFinanceCycleEndDate,
+  FINANCE_CYCLE_OPENING_ACCOUNT_TYPES,
   type FinanceCycleForecastInput,
   type FinanceCurrency,
 } from "@/lib/finance-cycle";
@@ -77,12 +78,16 @@ function toForecastInput(cycle: CycleWithRelations): FinanceCycleForecastInput {
     openingCurrency: cycle.openingCurrency,
     monthlyIncome: Number(cycle.monthlyIncome),
     incomeCurrency: cycle.incomeCurrency,
+    incomeDayOfMonth: cycle.incomeDayOfMonth,
     monthlyHousehold: Number(cycle.monthlyHousehold),
     householdCurrency: cycle.householdCurrency,
+    householdDayOfMonth: cycle.householdDayOfMonth,
     monthlyFlexible: Number(cycle.monthlyFlexible),
     flexibleCurrency: cycle.flexibleCurrency,
+    flexibleDayOfMonth: cycle.flexibleDayOfMonth,
     monthlyDebt: Number(cycle.monthlyDebt),
     debtCurrency: cycle.debtCurrency,
+    debtDayOfMonth: cycle.debtDayOfMonth,
     emergencyFloor: Number(cycle.emergencyFloor),
     emergencyCurrency: cycle.emergencyCurrency,
     incomeVariance: Number(cycle.incomeVariance),
@@ -132,7 +137,8 @@ async function resolvePreviousCycle(
   );
   const openingAmount =
     previous.closingAmount == null
-      ? previousForecast.results.expected.finalBalance
+      ? previousForecast.results.expected.finalBalance -
+        previousForecast.results.expected.goalSpend
       : Number(previous.closingAmount);
   const openingCurrency =
     previous.closingCurrency ?? previous.displayCurrency;
@@ -200,7 +206,7 @@ export const cycleRouter = router({
       ctx.db.account.findMany({
         where: {
           isArchived: false,
-          type: { in: ["BANK", "CASH", "SAVINGS"] },
+          type: { in: [...FINANCE_CYCLE_OPENING_ACCOUNT_TYPES] },
         },
       }),
       ctx.db.income.findMany({
@@ -302,12 +308,16 @@ export const cycleRouter = router({
           openingCurrency: carried.openingCurrency,
           monthlyIncome: new Prisma.Decimal(input.monthlyIncome),
           incomeCurrency: input.incomeCurrency,
+          incomeDayOfMonth: input.incomeDayOfMonth,
           monthlyHousehold: new Prisma.Decimal(input.monthlyHousehold),
           householdCurrency: input.householdCurrency,
+          householdDayOfMonth: input.householdDayOfMonth,
           monthlyFlexible: new Prisma.Decimal(input.monthlyFlexible),
           flexibleCurrency: input.flexibleCurrency,
+          flexibleDayOfMonth: input.flexibleDayOfMonth,
           monthlyDebt: new Prisma.Decimal(input.monthlyDebt),
           debtCurrency: input.debtCurrency,
+          debtDayOfMonth: input.debtDayOfMonth,
           emergencyFloor: new Prisma.Decimal(input.emergencyFloor),
           emergencyCurrency: input.emergencyCurrency,
           incomeVariance: new Prisma.Decimal(input.incomeVariance),
@@ -347,12 +357,16 @@ export const cycleRouter = router({
             openingCurrency: cycleInput.openingCurrency,
             monthlyIncome: new Prisma.Decimal(cycleInput.monthlyIncome),
             incomeCurrency: cycleInput.incomeCurrency,
+            incomeDayOfMonth: cycleInput.incomeDayOfMonth,
             monthlyHousehold: new Prisma.Decimal(cycleInput.monthlyHousehold),
             householdCurrency: cycleInput.householdCurrency,
+            householdDayOfMonth: cycleInput.householdDayOfMonth,
             monthlyFlexible: new Prisma.Decimal(cycleInput.monthlyFlexible),
             flexibleCurrency: cycleInput.flexibleCurrency,
+            flexibleDayOfMonth: cycleInput.flexibleDayOfMonth,
             monthlyDebt: new Prisma.Decimal(cycleInput.monthlyDebt),
             debtCurrency: cycleInput.debtCurrency,
+            debtDayOfMonth: cycleInput.debtDayOfMonth,
             emergencyFloor: new Prisma.Decimal(cycleInput.emergencyFloor),
             emergencyCurrency: cycleInput.emergencyCurrency,
             incomeVariance: new Prisma.Decimal(cycleInput.incomeVariance),
@@ -403,10 +417,21 @@ export const cycleRouter = router({
         data: {
           status: "CLOSED",
           closingAmount: new Prisma.Decimal(
-            forecast.results.expected.finalBalance,
+            forecast.results.expected.finalBalance -
+              forecast.results.expected.goalSpend,
           ),
           closingCurrency: cycle.displayCurrency,
           closedAt: new Date(),
+          goals: {
+            updateMany: {
+              where: {
+                id: {
+                  in: forecast.results.expected.affordableGoalIds,
+                },
+              },
+              data: { status: "FUNDED" },
+            },
+          },
         },
         include: cycleInclude,
       });

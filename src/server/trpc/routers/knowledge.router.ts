@@ -83,6 +83,107 @@ export const knowledgeRouter = router({
       }));
     }),
 
+  navigation: publicProcedure.query(async ({ ctx }) => {
+    const [documents, rootIndexes] = await Promise.all([
+      ctx.db.knowledgeDocument.findMany({
+        where: { deletedAt: null },
+        orderBy: { relativePath: "asc" },
+        select: {
+          id: true,
+          relativePath: true,
+          title: true,
+          pillar: true,
+        },
+      }),
+      ctx.db.knowledgeDocument.findMany({
+        where: {
+          deletedAt: null,
+          relativePath: { in: ["_roadmap.md", "_index.md"] },
+        },
+        select: { id: true, relativePath: true, content: true },
+      }),
+    ]);
+
+    const rootIndex =
+      rootIndexes.find((document) => document.relativePath === "_roadmap.md") ??
+      rootIndexes.find((document) => document.relativePath === "_index.md") ??
+      null;
+    const categoryOrder = new Map<string, number>();
+
+    for (const match of rootIndex?.content.matchAll(/\[\[([^\]\\|]+)(?:\\?\|[^\]]+)?\]\]/g) ?? []) {
+      const target = match[1]?.replace(/\.md$/i, "");
+      const category = target?.match(/^([^/]+)\/_index$/i)?.[1];
+      if (category && !categoryOrder.has(category)) {
+        categoryOrder.set(category, categoryOrder.size);
+      }
+    }
+
+    const categories = new Map<
+      string,
+      {
+        name: string;
+        title: string;
+        indexDocumentId: string | null;
+        documentCount: number;
+      }
+    >();
+
+    for (const document of documents) {
+      if (!document.pillar) continue;
+      const category = categories.get(document.pillar) ?? {
+        name: document.pillar,
+        title: document.pillar
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" "),
+        indexDocumentId: null,
+        documentCount: 0,
+      };
+      if (document.relativePath === `${document.pillar}/_index.md`) {
+        category.title = document.title;
+        category.indexDocumentId = document.id;
+      } else {
+        category.documentCount += 1;
+      }
+      categories.set(document.pillar, category);
+    }
+
+    return {
+      indexDocumentId: rootIndex?.id ?? null,
+      categories: [...categories.values()].sort((left, right) => {
+        const leftOrder = categoryOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
+        const rightOrder = categoryOrder.get(right.name) ?? Number.MAX_SAFE_INTEGER;
+        return leftOrder - rightOrder || left.title.localeCompare(right.title);
+      }),
+      documents,
+    };
+  }),
+
+  index: publicProcedure.query(async ({ ctx }) => {
+    const document = await ctx.db.knowledgeDocument.findFirst({
+      where: {
+        deletedAt: null,
+        relativePath: { in: ["_roadmap.md", "_index.md"] },
+      },
+      include: {
+        tags: { select: { tag: true }, orderBy: { tag: "asc" } },
+      },
+      orderBy: { relativePath: "desc" },
+    });
+    if (!document) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Knowledge index not found. Sync the Obsidian vault to add it.",
+      });
+    }
+    const { tags, canvas, ...rest } = document;
+    return {
+      ...rest,
+      canvas: canvas ? obsidianCanvasSchema.parse(canvas) : null,
+      tags: tags.map(({ tag }) => tag),
+    };
+  }),
+
   get: publicProcedure
     .input(getKnowledgeDocumentSchema)
     .query(async ({ ctx, input }) => {

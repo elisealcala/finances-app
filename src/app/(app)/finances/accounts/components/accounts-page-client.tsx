@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { EyeOff, Plus } from "lucide-react";
 import { useAccounts, useDeleteAccount, useUpdateAccount } from "@/hooks/use-accounts";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import { AccountBalanceSummary } from "./account-balance-summary";
 import { getAccountColumns } from "./account-columns";
 import type { AccountWithBalance } from "@/types/finances";
 import { PageHeader, PageShell } from "@/components/page";
+import { useAccountBalanceVisibility } from "../hooks/use-account-balance-visibility";
 
 export function AccountsPageClient() {
   const [showClosed, setShowClosed] = useState(false);
@@ -36,6 +37,13 @@ export function AccountsPageClient() {
     useState<AccountWithBalance | null>(null);
 
   const accounts = data?.accounts ?? [];
+  const {
+    hiddenAccountIds,
+    hiddenCount,
+    isHidden,
+    showAll,
+    toggleVisibility,
+  } = useAccountBalanceVisibility(accounts);
 
   function handleEdit(account: AccountWithBalance) {
     setEditingAccount(account);
@@ -61,6 +69,8 @@ export function AccountsPageClient() {
     onEdit: handleEdit,
     onDelete: setDeletingAccount,
     onToggleArchive: handleToggleArchive,
+    onToggleBalanceVisibility: toggleVisibility,
+    isBalanceHidden: isHidden,
   });
 
   return (
@@ -76,7 +86,28 @@ export function AccountsPageClient() {
         }
       />
 
-      <AccountBalanceSummary accounts={accounts} />
+      <AccountBalanceSummary
+        accounts={accounts}
+        hiddenAccountIds={hiddenAccountIds}
+      />
+
+      {hiddenCount > 0 && (
+        <div className="bg-muted/50 flex items-center gap-2 rounded-md px-4 py-2 text-sm">
+          <EyeOff className="h-4 w-4" />
+          <span>
+            {hiddenCount} account{hiddenCount === 1 ? "" : "s"} hidden from
+            the balance summary
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0"
+            onClick={showAll}
+          >
+            Show all
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Checkbox

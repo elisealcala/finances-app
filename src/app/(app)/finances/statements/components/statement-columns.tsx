@@ -37,6 +37,7 @@ type StatementRow = CreditCardStatement & {
   account?: { name: string; currency: string; color: string | null };
   expenseCount?: number;
   totalsByCurrency?: Record<string, number>;
+  outstandingByCurrency?: Record<string, number>;
 };
 
 type ColumnsConfig = {
@@ -108,15 +109,18 @@ export function getStatementColumns({
     },
     {
       id: "total",
-      header: "Total",
+      header: "Outstanding",
       cell: ({ row }) => {
-        const totalsByCurrency = row.original.totalsByCurrency;
-        if (!totalsByCurrency || Object.keys(totalsByCurrency).length === 0) {
+        const outstandingByCurrency = row.original.outstandingByCurrency;
+        if (
+          !outstandingByCurrency ||
+          Object.keys(outstandingByCurrency).length === 0
+        ) {
           return <span className="text-muted-foreground">—</span>;
         }
         return (
           <div className="font-mono tabular-nums">
-            {Object.entries(totalsByCurrency).map(([currency, total]) => (
+            {Object.entries(outstandingByCurrency).map(([currency, total]) => (
               <div key={currency}>
                 {formatCurrency(total, currency as "PEN" | "USD" | "EUR")}
               </div>

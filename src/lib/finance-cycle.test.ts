@@ -57,17 +57,17 @@ function forecastInput(
 }
 
 describe("FINANCE_CYCLE_OPENING_ACCOUNT_TYPES", () => {
-  test("limits opening balances to liquid and credit-card accounts", () => {
+  test("limits opening balances to liquid accounts", () => {
     assert.deepEqual([...FINANCE_CYCLE_OPENING_ACCOUNT_TYPES], [
       "BANK",
       "CASH",
       "SAVINGS",
-      "CREDIT_CARD",
     ]);
 
     const openingAccountTypes = new Set<string>(
       FINANCE_CYCLE_OPENING_ACCOUNT_TYPES,
     );
+    assert.equal(openingAccountTypes.has("CREDIT_CARD"), false);
     assert.equal(openingAccountTypes.has("INVESTMENT"), false);
     assert.equal(openingAccountTypes.has("OTHER"), false);
   });
@@ -244,6 +244,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 0,
         flexibleSpending: 0,
         debtPayments: 0,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 0,
         netChange: 0,
       },
@@ -257,6 +260,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 700,
         flexibleSpending: 200,
         debtPayments: 100,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 1_000,
         netChange: 1_000,
       },
@@ -270,6 +276,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 1_400,
         flexibleSpending: 400,
         debtPayments: 200,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 2_000,
         netChange: 2_000,
       },
@@ -283,6 +292,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 2_100,
         flexibleSpending: 600,
         debtPayments: 300,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 3_000,
         netChange: 3_000,
       },
@@ -296,10 +308,205 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 2_100,
         flexibleSpending: 600,
         debtPayments: 300,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 3_000,
         netChange: 3_000,
       },
     ]);
+  });
+
+  test("converts and deducts statement payments on their exact due dates", () => {
+    const forecast = calculateFinanceForecast(
+      forecastInput({
+        emergencyFloor: 0,
+        goals: [],
+        statementPayments: [
+          {
+            id: "mixed-currency-statement",
+            label: "Mixed currency card",
+            dueDate: date("2026-02-10"),
+            amounts: [
+              { amount: 40, currency: "PEN" },
+              { amount: 8, currency: "EUR" },
+              { amount: 30, currency: "USD" },
+            ],
+          },
+          {
+            id: "same-day-statement",
+            label: "Second card",
+            dueDate: date("2026-02-10"),
+            amounts: [{ amount: 20, currency: "USD" }],
+          },
+          {
+            id: "later-statement",
+            label: "Later card",
+            dueDate: date("2026-03-20"),
+            amounts: [{ amount: 100, currency: "USD" }],
+          },
+        ],
+      }),
+    );
+    const expected = forecast.results.expected;
+
+    assert.equal(forecast.statementPaymentTotal, 170);
+    assert.deepEqual(
+      expected.points.map((point) => ({
+        date: point.date.toISOString().slice(0, 10),
+        statementPayments: point.statementPayments,
+        statementPaymentAmount: point.statementPaymentAmount,
+        statementPaymentEvents: point.statementPaymentEvents,
+      })),
+      [
+        {
+          date: "2026-01-15",
+          statementPayments: 0,
+          statementPaymentAmount: 0,
+          statementPaymentEvents: [],
+        },
+        {
+          date: "2026-02-01",
+          statementPayments: 0,
+          statementPaymentAmount: 0,
+          statementPaymentEvents: [],
+        },
+        {
+          date: "2026-02-10",
+          statementPayments: 70,
+          statementPaymentAmount: 70,
+          statementPaymentEvents: [
+            {
+              id: "mixed-currency-statement",
+              label: "Mixed currency card",
+              amount: 50,
+            },
+            {
+              id: "same-day-statement",
+              label: "Second card",
+              amount: 20,
+            },
+          ],
+        },
+        {
+          date: "2026-03-01",
+          statementPayments: 70,
+          statementPaymentAmount: 0,
+          statementPaymentEvents: [],
+        },
+        {
+          date: "2026-03-20",
+          statementPayments: 170,
+          statementPaymentAmount: 100,
+          statementPaymentEvents: [
+            {
+              id: "later-statement",
+              label: "Later card",
+              amount: 100,
+            },
+          ],
+        },
+        {
+          date: "2026-04-01",
+          statementPayments: 170,
+          statementPaymentAmount: 0,
+          statementPaymentEvents: [],
+        },
+        {
+          date: "2026-04-15",
+          statementPayments: 170,
+          statementPaymentAmount: 0,
+          statementPaymentEvents: [],
+        },
+      ],
+    );
+
+    const firstPaymentPoint = expected.points[2];
+    const finalPoint = expected.points.at(-1);
+    assert.equal(firstPaymentPoint?.totalExpenses, 1_070);
+    assert.equal(firstPaymentPoint?.balance, 1_930);
+    assert.equal(finalPoint?.totalExpenses, 3_170);
+    assert.equal(expected.finalBalance, 3_830);
+    assert.equal(finalPoint?.balance, expected.finalBalance);
+    assertClose(expected.periodRoom, 1_000 - 170 / 3);
+  });
+
+  test("includes statement payments on cycle boundaries and ignores outside dates", () => {
+    const startDate = date("2026-01-15");
+    const endDate = date("2026-01-22");
+    const forecast = calculateFinanceForecast(
+      forecastInput({
+        kind: "CUSTOM",
+        startDate,
+        endDate,
+        openingAmount: 100,
+        monthlyIncome: 0,
+        monthlyHousehold: 0,
+        monthlyFlexible: 0,
+        monthlyDebt: 0,
+        emergencyFloor: 0,
+        goals: [],
+        statementPayments: [
+          {
+            id: "before-cycle",
+            label: "Before cycle",
+            dueDate: date("2026-01-14"),
+            amounts: [{ amount: 1_000, currency: "USD" }],
+          },
+          {
+            id: "start-boundary",
+            label: "Start boundary",
+            dueDate: startDate,
+            amounts: [{ amount: 10, currency: "USD" }],
+          },
+          {
+            id: "end-boundary",
+            label: "End boundary",
+            dueDate: endDate,
+            amounts: [{ amount: 20, currency: "USD" }],
+          },
+          {
+            id: "after-cycle",
+            label: "After cycle",
+            dueDate: date("2026-01-23"),
+            amounts: [{ amount: 1_000, currency: "USD" }],
+          },
+        ],
+      }),
+    );
+    const expected = forecast.results.expected;
+
+    assert.equal(forecast.statementPaymentTotal, 30);
+    assert.equal(expected.finalBalance, 70);
+    assert.deepEqual(
+      expected.points.map((point) => ({
+        date: point.date.toISOString().slice(0, 10),
+        balance: point.balance,
+        statementPayments: point.statementPayments,
+        statementPaymentAmount: point.statementPaymentAmount,
+        statementPaymentEvents: point.statementPaymentEvents,
+      })),
+      [
+        {
+          date: "2026-01-15",
+          balance: 90,
+          statementPayments: 10,
+          statementPaymentAmount: 10,
+          statementPaymentEvents: [
+            { id: "start-boundary", label: "Start boundary", amount: 10 },
+          ],
+        },
+        {
+          date: "2026-01-22",
+          balance: 70,
+          statementPayments: 30,
+          statementPaymentAmount: 20,
+          statementPaymentEvents: [
+            { id: "end-boundary", label: "End boundary", amount: 20 },
+          ],
+        },
+      ],
+    );
   });
 
   test("does not apply a cash flow outside a weekly cycle", () => {
@@ -354,6 +561,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 0,
         flexibleSpending: 0,
         debtPayments: 0,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 0,
         netChange: 0,
       },
@@ -367,6 +577,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 0,
         flexibleSpending: 0,
         debtPayments: 0,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 0,
         netChange: 2_000,
       },
@@ -380,6 +593,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 700,
         flexibleSpending: 200,
         debtPayments: 0,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 900,
         netChange: 1_100,
       },
@@ -393,6 +609,9 @@ describe("calculateFinanceForecast", () => {
         householdSpending: 700,
         flexibleSpending: 200,
         debtPayments: 100,
+        statementPayments: 0,
+        statementPaymentAmount: 0,
+        statementPaymentEvents: [],
         totalExpenses: 1_000,
         netChange: 1_000,
       },
@@ -490,6 +709,9 @@ describe("calculateFinanceForecast", () => {
       householdSpending: 1_400,
       flexibleSpending: 400,
       debtPayments: 200,
+      statementPayments: 0,
+      statementPaymentAmount: 0,
+      statementPaymentEvents: [],
       totalExpenses: 2_000,
       netChange: 2_000,
     });

@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import type { AccountWithBalance } from "@/types/finances";
 
 import {
+  getDefaultBalanceHiddenAccountIds,
   getAccountCurrencyBalances,
   sumActiveAccountBalances,
 } from "./account-balance-totals";
@@ -35,6 +36,29 @@ function account(
     ...overrides,
   };
 }
+
+describe("getDefaultBalanceHiddenAccountIds", () => {
+  test("selects active and archived credit cards without selecting other account types", () => {
+    const hiddenAccountIds = getDefaultBalanceHiddenAccountIds([
+      account({ id: "bank", type: "BANK" }),
+      account({ id: "cash", type: "CASH" }),
+      account({ id: "savings", type: "SAVINGS" }),
+      account({ id: "investment", type: "INVESTMENT" }),
+      account({ id: "other", type: "OTHER" }),
+      account({ id: "active-credit-card", type: "CREDIT_CARD" }),
+      account({
+        id: "archived-credit-card",
+        type: "CREDIT_CARD",
+        isArchived: true,
+      }),
+    ]);
+
+    assert.deepEqual(
+      hiddenAccountIds,
+      new Set(["active-credit-card", "archived-credit-card"]),
+    );
+  });
+});
 
 describe("getAccountCurrencyBalances", () => {
   test("returns primary and configured zero-valued secondary currencies in supported order", () => {

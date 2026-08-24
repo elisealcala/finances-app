@@ -6,6 +6,7 @@ import { notesRouter } from "./routers/notes.router";
 import { performanceRouter } from "./routers/performance.router";
 import { knowledgeRouter } from "./routers/knowledge.router";
 import { careerRouter } from "./routers/career.router";
+import { hubRouter } from "./routers/hub.router";
 
 export const appRouter = router({
   debt: debtRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   performance: performanceRouter,
   knowledge: knowledgeRouter,
   career: careerRouter,
+  hub: hubRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -11,6 +11,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  ReceiptText,
   Save,
   Sparkles,
   Trash2,
@@ -44,6 +45,7 @@ import {
   useFinanceCycles,
   useUpdateFinanceCycle,
 } from "@/hooks/use-finance-cycles";
+import { useStatements } from "@/hooks/use-statements";
 import {
   FINANCE_CURRENCIES,
   calculateFinanceForecast,
@@ -55,6 +57,7 @@ import {
   type FinanceGoalPriority,
   type FinanceGoalStatus,
   type FinanceScenario,
+  type FinanceStatementPaymentInput,
 } from "@/lib/finance-cycle";
 import { CURRENCY_LABELS, cn, formatCurrency } from "@/lib/utils";
 import { FinanceCycleChart } from "./finance-cycle-chart";
@@ -120,6 +123,16 @@ type PersistedCycle = Omit<CycleForm, "startDate" | "endDate" | "goals"> & {
 type FinanceCycleDefaults = NonNullable<
   ReturnType<typeof useFinanceCycleDefaults>["data"]
 >;
+
+type StatementPaymentRow = {
+  id: string;
+  month: number;
+  year: number;
+  status: "OPEN" | "CLOSED" | "PAID";
+  paymentDueDate: Date;
+  account: { name: string; currency: string };
+  outstandingByCurrency: Record<string, number>;
+};
 
 const CYCLE_LABELS: Record<FinanceCycleKind, string> = {
   WEEK: "Week",
@@ -258,7 +271,10 @@ function formFromCycle(cycle: PersistedCycle): CycleForm {
   };
 }
 
-function forecastInput(form: CycleForm): FinanceCycleForecastInput {
+function forecastInput(
+  form: CycleForm,
+  statementPayments: FinanceStatementPaymentInput[] = [],
+): FinanceCycleForecastInput {
   return {
     kind: form.kind,
     startDate: dateFromInput(form.startDate),
@@ -294,7 +310,46 @@ function forecastInput(form: CycleForm): FinanceCycleForecastInput {
         status: goal.status,
         position,
       })),
+    statementPayments,
   };
+}
+
+function statementPaymentsFromRows(
+  statements: StatementPaymentRow[],
+): FinanceStatementPaymentInput[] {
+  return statements.flatMap((statement) => {
+    if (statement.status === "PAID") return [];
+
+    const amounts = FINANCE_CURRENCIES.flatMap((currency) => {
+      const amount = statement.outstandingByCurrency[currency] ?? 0;
+      return amount > 0 ? [{ amount, currency }] : [];
+    });
+    if (amounts.length === 0) return [];
+
+    return [
+      {
+        id: statement.id,
+        label: `${statement.account.name} · ${format(
+          new Date(statement.year, statement.month - 1, 1),
+          "MMM yyyy",
+        )}`,
+        dueDate: new Date(statement.paymentDueDate),
+        amounts,
+      },
+    ];
+  });
+}
+
+function paymentsInsideCycle(
+  payments: FinanceStatementPaymentInput[],
+  form: CycleForm,
+) {
+  const start = dateFromInput(form.startDate).getTime();
+  const end = dateFromInput(form.endDate).getTime();
+  return payments.filter((payment) => {
+    const dueDate = new Date(payment.dueDate).getTime();
+    return dueDate >= start && dueDate <= end;
+  });
 }
 
 function mutationInput(form: CycleForm) {
@@ -465,10 +520,12 @@ function MoneyField({
 
 function CycleSummaryCard({
   cycle,
+  statementPayments,
   isSelected,
   onSelect,
 }: {
   cycle: PersistedCycle;
+  statementPayments: FinanceStatementPaymentInput[];
   isSelected: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -477,7 +534,9 @@ function CycleSummaryCard({
   const expectedClosing =
     cycle.closingAmount ??
     (() => {
-      const forecast = calculateFinanceForecast(forecastInput(formFromCycle(cycle)));
+      const forecast = calculateFinanceForecast(
+        forecastInput(formFromCycle(cycle), statementPayments),
+      );
       return forecast.results.expected.finalBalance - forecast.results.expected.goalSpend;
     })();
 
@@ -552,11 +611,13 @@ function CycleSummaryCard({
 function CycleGroup({
   title,
   cycles,
+  statementPayments,
   selectedCycleId,
   onSelect,
 }: {
   title: string;
   cycles: PersistedCycle[];
+  statementPayments: FinanceStatementPaymentInput[];
   selectedCycleId: string | null;
   onSelect: (id: string) => void;
 }) {
@@ -573,6 +634,7 @@ function CycleGroup({
           <CycleSummaryCard
             key={cycle.id}
             cycle={cycle}
+            statementPayments={statementPayments}
             isSelected={cycle.id === selectedCycleId}
             onSelect={onSelect}
           />
@@ -586,12 +648,20 @@ export function FinanceCyclePlanner() {
   const { data: cycleData, isLoading: cyclesLoading } = useFinanceCycles();
   const { data: defaults, isLoading: defaultsLoading } =
     useFinanceCycleDefaults();
+  const { data: statementData, isLoading: statementsLoading } = useStatements();
   const cycles = useMemo(
     () => (cycleData?.cycles ?? []) as PersistedCycle[],
     [cycleData?.cycles],
   );
+  const statementPayments = useMemo(
+    () =>
+      statementPaymentsFromRows(
+        (statementData?.statements ?? []) as StatementPaymentRow[],
+      ),
+    [statementData?.statements],
+  );
 
-  if (cyclesLoading || defaultsLoading) {
+  if (cyclesLoading || defaultsLoading || statementsLoading) {
     return (
       <Card>
         <CardContent className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
@@ -606,6 +676,7 @@ export function FinanceCyclePlanner() {
       key={cycles[0]?.id ?? "new-cycle"}
       cycles={cycles}
       defaults={defaults}
+      statementPayments={statementPayments}
     />
   );
 }
@@ -613,9 +684,11 @@ export function FinanceCyclePlanner() {
 function FinanceCyclePlannerContent({
   cycles,
   defaults,
+  statementPayments,
 }: {
   cycles: PersistedCycle[];
   defaults?: FinanceCycleDefaults;
+  statementPayments: FinanceStatementPaymentInput[];
 }) {
   const createCycle = useCreateFinanceCycle();
   const updateCycle = useUpdateFinanceCycle();
@@ -629,8 +702,12 @@ function FinanceCyclePlannerContent({
   );
 
   const forecast = useMemo(
-    () => calculateFinanceForecast(forecastInput(form)),
-    [form],
+    () => calculateFinanceForecast(forecastInput(form, statementPayments)),
+    [form, statementPayments],
+  );
+  const includedStatementPayments = useMemo(
+    () => paymentsInsideCycle(statementPayments, form),
+    [form, statementPayments],
   );
   const result = forecast.results[scenario];
   const selectedCycle = cycles.find((cycle) => cycle.id === selectedCycleId);
@@ -705,7 +782,7 @@ function FinanceCyclePlannerContent({
       return;
     }
     const previousForecast = calculateFinanceForecast(
-      forecastInput(formFromCycle(previous)),
+      forecastInput(formFromCycle(previous), statementPayments),
     );
     const startDate = previous.endDate;
     const kind: FinanceCycleKind = "THREE_MONTHS";
@@ -853,18 +930,21 @@ function FinanceCyclePlannerContent({
               <CycleGroup
                 title="Current"
                 cycles={activeCycles}
+                statementPayments={statementPayments}
                 selectedCycleId={selectedCycleId}
                 onSelect={loadCycle}
               />
               <CycleGroup
                 title="Drafts"
                 cycles={draftCycles}
+                statementPayments={statementPayments}
                 selectedCycleId={selectedCycleId}
                 onSelect={loadCycle}
               />
               <CycleGroup
                 title="History"
                 cycles={historyCycles}
+                statementPayments={statementPayments}
                 selectedCycleId={selectedCycleId}
                 onSelect={loadCycle}
               />
@@ -973,32 +1053,95 @@ function FinanceCyclePlannerContent({
           </CardContent>
         </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Forecast scenario">
-          {(["conservative", "expected", "optimistic"] as const).map(
-            (option) => (
-              <Button
-                key={option}
-                type="button"
-                size="sm"
-                variant={scenario === option ? "default" : "outline"}
-                aria-pressed={scenario === option}
-                className="capitalize"
-                onClick={() => setScenario(option)}
-              >
-                {option}
-              </Button>
-            ),
-          )}
-        </div>
-        <span className="text-muted-foreground text-xs">
-          {scenario === "expected"
-            ? "Uses your usual income"
-            : `Uses income ${scenario === "conservative" ? "below" : "above"} plan by ${form.incomeVariance}%`}
-        </span>
-      </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ReceiptText className="size-5" /> Scheduled statement payments
+            </CardTitle>
+            <CardDescription>
+              Live unpaid statement balances due inside this cycle. Amounts and
+              due dates refresh automatically when statements or linked expenses
+              change.
+            </CardDescription>
+            <CardAction className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {includedStatementPayments.length}{" "}
+                {includedStatementPayments.length === 1
+                  ? "statement"
+                  : "statements"}
+              </Badge>
+              <span className="text-sm font-semibold tabular-nums">
+                {formatCurrency(
+                  forecast.statementPaymentTotal,
+                  form.displayCurrency,
+                )}
+              </span>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {includedStatementPayments.length === 0 ? (
+              <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+                No unpaid statements are due between{" "}
+                {format(forecast.startDate, "MMM d")} and{" "}
+                {format(forecast.endDate, "MMM d, yyyy")}.
+              </div>
+            ) : (
+              <div className="divide-y rounded-lg border">
+                {includedStatementPayments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex flex-wrap items-center justify-between gap-3 p-3"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{payment.label}</div>
+                      <div className="text-muted-foreground text-xs">
+                        Due {format(payment.dueDate, "MMM d, yyyy")}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm font-semibold tabular-nums">
+                      {payment.amounts.map((item) => (
+                        <div key={item.currency}>
+                          {formatCurrency(item.amount, item.currency)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Forecast scenario"
+          >
+            {(["conservative", "expected", "optimistic"] as const).map(
+              (option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  size="sm"
+                  variant={scenario === option ? "default" : "outline"}
+                  aria-pressed={scenario === option}
+                  className="capitalize"
+                  onClick={() => setScenario(option)}
+                >
+                  {option}
+                </Button>
+              ),
+            )}
+          </div>
+          <span className="text-muted-foreground text-xs">
+            {scenario === "expected"
+              ? "Uses your usual income"
+              : `Uses income ${scenario === "conservative" ? "below" : "above"} plan by ${form.incomeVariance}%`}
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardDescription>
@@ -1007,6 +1150,17 @@ function FinanceCyclePlannerContent({
             <CardTitle className="text-2xl tabular-nums">
               {formatCurrency(
                 result.finalBalance - result.goalSpend,
+                form.displayCurrency,
+              )}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Statements due in this cycle</CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              {formatCurrency(
+                forecast.statementPaymentTotal,
                 form.displayCurrency,
               )}
             </CardTitle>
@@ -1032,7 +1186,7 @@ function FinanceCyclePlannerContent({
             </CardTitle>
           </CardHeader>
         </Card>
-      </div>
+        </div>
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)]">
         <div className="space-y-6">
@@ -1040,8 +1194,9 @@ function FinanceCyclePlannerContent({
             <CardHeader>
               <CardTitle>Projected cash runway</CardTitle>
               <CardDescription>
-                Solid line includes goals this plan can fund at the end of the
-                cycle; the dashed line is cash before those goal purchases.
+                Statement payments are deducted on their due dates and marked
+                with red diamonds. The solid line includes goals this plan can
+                fund at the end of the cycle.
               </CardDescription>
               <CardAction>
                 <Badge variant="outline" className="capitalize">
@@ -1212,8 +1367,9 @@ function FinanceCyclePlannerContent({
           <CardHeader>
             <CardTitle>Forecast assumptions</CardTitle>
             <CardDescription>
-              Choose when each monthly amount lands. Every amount keeps its
-              source currency and is converted only for display.
+              Choose when each non-card monthly amount lands. Credit-card
+              statements are pulled in automatically above, and every amount
+              is converted only for display.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -1251,7 +1407,7 @@ function FinanceCyclePlannerContent({
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <MoneyField
-                label="Opening cash (net of cards)"
+                label="Opening cash"
                 amount={form.openingAmount}
                 currency={form.openingCurrency}
                 onAmountChange={(openingAmount) => patchForm({ openingAmount })}
@@ -1274,7 +1430,7 @@ function FinanceCyclePlannerContent({
                 }
               />
               <MoneyField
-                label="Household spending"
+                label="Non-card household spending"
                 amount={form.monthlyHousehold}
                 currency={form.householdCurrency}
                 onAmountChange={(monthlyHousehold) =>
@@ -1290,7 +1446,7 @@ function FinanceCyclePlannerContent({
                 }
               />
               <MoneyField
-                label="Flexible spending"
+                label="Non-card flexible spending"
                 amount={form.monthlyFlexible}
                 currency={form.flexibleCurrency}
                 onAmountChange={(monthlyFlexible) =>
@@ -1306,7 +1462,7 @@ function FinanceCyclePlannerContent({
                 }
               />
               <MoneyField
-                label="Debt payments"
+                label="Other debt payments"
                 amount={form.monthlyDebt}
                 currency={form.debtCurrency}
                 onAmountChange={(monthlyDebt) => patchForm({ monthlyDebt })}

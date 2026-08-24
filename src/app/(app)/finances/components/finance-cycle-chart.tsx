@@ -29,9 +29,14 @@ export function FinanceCycleChart({
   currency,
   emergencyFloor,
 }: FinanceCycleChartProps) {
-  const colors = useChartColors(["var(--chart-1)", "var(--border)"]);
+  const colors = useChartColors([
+    "var(--chart-1)",
+    "var(--border)",
+    "var(--destructive)",
+  ]);
   const seriesColor = colors["var(--chart-1)"] ?? "#4f8067";
   const borderColor = colors["var(--border)"] ?? "#d4d4d4";
+  const statementColor = colors["var(--destructive)"] ?? "#dc2626";
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -93,9 +98,24 @@ export function FinanceCycleChart({
             data: [{ yAxis: emergencyFloor }],
           },
         },
+        {
+          name: "Statement payments",
+          type: "scatter",
+          data: points.map((point) =>
+            point.statementPaymentAmount > 0 ? point.balance : null,
+          ),
+          symbol: "diamond",
+          symbolSize: 12,
+          itemStyle: {
+            color: statementColor,
+            borderColor: "var(--background)",
+            borderWidth: 2,
+          },
+          z: 5,
+        },
       ],
     }),
-    [borderColor, emergencyFloor, points, seriesColor],
+    [borderColor, emergencyFloor, points, seriesColor, statementColor],
   );
 
   function amountClass(value: number) {
@@ -148,6 +168,33 @@ export function FinanceCycleChart({
                   {formatCurrency(expenseValue(point.debtPayments), currency)}
                 </span>
               </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">Statements</span>
+                <span className="text-destructive">
+                  {formatCurrency(
+                    expenseValue(point.statementPayments),
+                    currency,
+                  )}
+                </span>
+              </div>
+              {point.statementPaymentEvents.length > 0 ? (
+                <div className="bg-destructive/5 my-2 space-y-1 rounded-md p-2">
+                  <div className="text-destructive text-xs font-medium uppercase tracking-wide">
+                    Due on this date
+                  </div>
+                  {point.statementPaymentEvents.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="max-w-44 truncate">{payment.label}</span>
+                      <span className="text-destructive font-medium tabular-nums">
+                        {formatCurrency(expenseValue(payment.amount), currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-4 font-medium">
                 <span>Total expenses</span>
                 <span className="text-destructive">

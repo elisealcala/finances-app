@@ -12,6 +12,7 @@ import {
   RefreshCw,
   FileUser,
   LayoutDashboard,
+  ListTodo,
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +53,11 @@ const navItems = [
     title: "Health",
     url: "/health",
     icon: HeartPulse,
+  },
+  {
+    title: "Tasks & Ideas",
+    url: "/tasks",
+    icon: ListTodo,
   },
   {
     title: "Career",

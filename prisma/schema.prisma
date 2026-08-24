@@ -806,3 +806,149 @@ model AssistantMessage {
   @@index([chatId, createdAt])
   @@map("assistant_messages")
 }
+
+// ============================================
+// TASKS & IDEAS MODULE
+// ============================================
+
+enum HubTaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  CANCELED
+}
+
+enum HubTaskPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+  NONE
+}
+
+enum HubIdeaStage {
+  RAW
+  EXPLORING
+  PRIORITIZED
+  IN_ACTION
+  ARCHIVED
+}
+
+model HubSequence {
+  id         String @id @default("default")
+  taskNumber Int    @default(0) @map("task_number")
+  ideaNumber Int    @default(0) @map("idea_number")
+
+  @@map("hub_sequences")
+}
+
+model HubProject {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#6366f1")
+  icon        String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tasks HubTask[]
+  ideas HubIdea[]
+
+  @@index([name])
+  @@map("hub_projects")
+}
+
+model HubLabel {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("#64748b")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tasks HubTaskLabel[]
+
+  @@map("hub_labels")
+}
+
+model HubTask {
+  id             String          @id @default(cuid())
+  identifier     String          @unique
+  title          String
+  description    String?         @db.Text
+  status         HubTaskStatus   @default(TODO)
+  priority       HubTaskPriority @default(NONE)
+  dueDate        DateTime?       @map("due_date")
+  estimatePoints Int?            @map("estimate_points")
+  position       Int             @default(0)
+  completedAt    DateTime?       @map("completed_at")
+  projectId      String?         @map("project_id")
+  sourceIdeaId   String?         @unique @map("source_idea_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  project    HubProject?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sourceIdea HubIdea?       @relation("HubIdeaSource", fields: [sourceIdeaId], references: [id], onDelete: SetNull)
+  labels     HubTaskLabel[]
+  subtasks   HubSubtask[]
+
+  @@index([status, dueDate])
+  @@index([projectId])
+  @@index([priority])
+  @@map("hub_tasks")
+}
+
+model HubSubtask {
+  id        String   @id @default(cuid())
+  title     String
+  completed Boolean  @default(false)
+  position  Int      @default(0)
+  taskId    String   @map("task_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task HubTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, position])
+  @@map("hub_subtasks")
+}
+
+model HubTaskLabel {
+  taskId  String @map("task_id")
+  labelId String @map("label_id")
+
+  task  HubTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label HubLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@index([labelId])
+  @@map("hub_task_labels")
+}
+
+model HubIdea {
+  id            String       @id @default(cuid())
+  identifier    String       @unique
+  title         String
+  description   String       @default("") @db.Text
+  category      String       @default("Side Project")
+  stage         HubIdeaStage @default(RAW)
+  impact        Int          @default(3)
+  effort        Int          @default(2)
+  confidence    Int          @default(4)
+  score         Decimal      @default(6) @db.Decimal(8, 2)
+  tags          String[]
+  targetQuarter String?      @map("target_quarter")
+  notes         String?      @db.Text
+  projectId     String?      @map("project_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  project    HubProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sourceTask HubTask?    @relation("HubIdeaSource")
+
+  @@index([stage, score])
+  @@index([projectId])
+  @@index([category])
+  @@map("hub_ideas")
+}

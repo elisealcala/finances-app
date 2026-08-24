@@ -22,6 +22,9 @@ export function useCreateExpense() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.account.list.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.list.queryKey(),
+      });
     },
   });
 }
@@ -39,6 +42,9 @@ export function useUpdateExpense() {
       queryClient.invalidateQueries({
         queryKey: trpc.finances.account.list.queryKey(),
       });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.list.queryKey(),
+      });
     },
   });
 }
@@ -55,6 +61,9 @@ export function useDeleteExpense() {
       });
       queryClient.invalidateQueries({
         queryKey: trpc.finances.account.list.queryKey(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: trpc.finances.statement.list.queryKey(),
       });
     },
   });

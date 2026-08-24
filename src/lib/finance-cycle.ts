@@ -18,7 +18,6 @@ export const FINANCE_CYCLE_OPENING_ACCOUNT_TYPES = [
   "BANK",
   "CASH",
   "SAVINGS",
-  "CREDIT_CARD",
 ] as const;
 
 export const FINANCE_CYCLE_KINDS = [
@@ -49,6 +48,16 @@ export type FinanceCycleGoalInput = {
   position?: number;
 };
 
+export type FinanceStatementPaymentInput = {
+  id: string;
+  label: string;
+  dueDate: Date;
+  amounts: Array<{
+    amount: number;
+    currency: FinanceCurrency;
+  }>;
+};
+
 export type FinanceCycleForecastInput = {
   kind: FinanceCycleKind;
   startDate: Date;
@@ -74,6 +83,13 @@ export type FinanceCycleForecastInput = {
   penPerUsd: number;
   usdPerEur: number;
   goals: FinanceCycleGoalInput[];
+  statementPayments?: FinanceStatementPaymentInput[];
+};
+
+export type FinanceStatementPaymentEvent = {
+  id: string;
+  label: string;
+  amount: number;
 };
 
 export type FinanceProjectionPoint = {
@@ -86,6 +102,9 @@ export type FinanceProjectionPoint = {
   householdSpending: number;
   flexibleSpending: number;
   debtPayments: number;
+  statementPayments: number;
+  statementPaymentAmount: number;
+  statementPaymentEvents: FinanceStatementPaymentEvent[];
   totalExpenses: number;
   netChange: number;
 };
@@ -115,6 +134,7 @@ export type FinanceForecast = {
   displayCurrency: FinanceCurrency;
   openingBalance: number;
   emergencyFloor: number;
+  statementPaymentTotal: number;
   goalTotal: number;
   results: Record<FinanceScenario, FinanceScenarioResult>;
 };
@@ -195,6 +215,7 @@ type ScheduledCashFlow = {
   household: number;
   flexible: number;
   debt: number;
+  statementPayments: FinanceStatementPaymentEvent[];
 };
 
 function dayOfMonth(value: number | undefined) {
@@ -243,11 +264,45 @@ function scheduledCashFlows(input: FinanceCycleForecastInput) {
         household: 0,
         flexible: 0,
         debt: 0,
+        statementPayments: [],
       };
       flow[schedule.key] += 1;
       flows.set(key, flow);
     }
     month = addMonths(month, 1);
+  }
+
+  for (const statement of input.statementPayments ?? []) {
+    const dueDate = startOfDay(statement.dueDate);
+    if (isBefore(dueDate, startDate) || isAfter(dueDate, endDate)) continue;
+
+    const amount = statement.amounts.reduce(
+      (sum, item) =>
+        sum +
+        convertFinanceCurrency(
+          Math.max(0, item.amount),
+          item.currency,
+          input.displayCurrency,
+          { penPerUsd: input.penPerUsd, usdPerEur: input.usdPerEur },
+        ),
+      0,
+    );
+    if (amount <= 0) continue;
+
+    const key = dateKey(dueDate);
+    const flow = flows.get(key) ?? {
+      income: 0,
+      household: 0,
+      flexible: 0,
+      debt: 0,
+      statementPayments: [],
+    };
+    flow.statementPayments.push({
+      id: statement.id,
+      label: statement.label,
+      amount,
+    });
+    flows.set(key, flow);
   }
 
   return flows;
@@ -378,6 +433,15 @@ export function calculateFinanceForecast(
   };
   const cashFlows = scheduledCashFlows(input);
   const dates = projectionDates(input, cashFlows);
+  const statementPaymentTotal = [...cashFlows.values()].reduce(
+    (sum, flow) =>
+      sum +
+      flow.statementPayments.reduce(
+        (flowSum, item) => flowSum + item.amount,
+        0,
+      ),
+    0,
+  );
 
   const results = Object.fromEntries(
     FINANCE_SCENARIOS.map((scenario) => {
@@ -388,14 +452,24 @@ export function calculateFinanceForecast(
       let householdSpending = 0;
       let flexibleSpending = 0;
       let debtPayments = 0;
+      let statementPayments = 0;
       const points = dates.map((date) => {
         const cashFlow = cashFlows.get(dateKey(date));
         income += monthlyIncome * (cashFlow?.income ?? 0);
         householdSpending += monthlyHousehold * (cashFlow?.household ?? 0);
         flexibleSpending += monthlyFlexible * (cashFlow?.flexible ?? 0);
         debtPayments += monthlyDebt * (cashFlow?.debt ?? 0);
+        const statementPaymentEvents = cashFlow?.statementPayments ?? [];
+        const statementPaymentAmount = statementPaymentEvents.reduce(
+          (sum, item) => sum + item.amount,
+          0,
+        );
+        statementPayments += statementPaymentAmount;
         const totalExpenses =
-          householdSpending + flexibleSpending + debtPayments;
+          householdSpending +
+          flexibleSpending +
+          debtPayments +
+          statementPayments;
         const netChange = income - totalExpenses;
 
         return {
@@ -408,6 +482,9 @@ export function calculateFinanceForecast(
           householdSpending,
           flexibleSpending,
           debtPayments,
+          statementPayments,
+          statementPaymentAmount,
+          statementPaymentEvents,
           totalExpenses,
           netChange,
         };
@@ -421,7 +498,9 @@ export function calculateFinanceForecast(
       );
       const extraPerPeriod = goalGap / periods;
       const periodRoom =
-        input.kind === "WEEK" ? monthlyNet * (12 / 52) : monthlyNet;
+        input.kind === "WEEK"
+          ? monthlyNet * (12 / 52) - statementPaymentTotal
+          : monthlyNet - statementPaymentTotal / periods;
       const allocation = allocateGoals(
         input.goals,
         availableForGoals,
@@ -462,6 +541,7 @@ export function calculateFinanceForecast(
     displayCurrency: input.displayCurrency,
     openingBalance,
     emergencyFloor,
+    statementPaymentTotal,
     goalTotal,
     results,
   };

@@ -1,7 +1,15 @@
 "use client";
 
-import { ExternalLink, FileText, Minus, Plus, Scan } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ExternalLink,
+  FileText,
+  Maximize2,
+  Minimize2,
+  Minus,
+  Plus,
+  Scan,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ObsidianCanvas } from "@/server/knowledge/canvas";
@@ -128,6 +136,7 @@ function CanvasNodeCard({ node }: { node: CanvasNode }) {
 
 export function KnowledgeCanvas({ canvas }: { canvas: ObsidianCanvas }) {
   const [zoom, setZoom] = useState(0.7);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const layout = useMemo(() => {
     const minX = Math.min(...canvas.nodes.map((node) => node.x), 0);
     const minY = Math.min(...canvas.nodes.map((node) => node.y), 0);
@@ -154,9 +163,31 @@ export function KnowledgeCanvas({ canvas }: { canvas: ObsidianCanvas }) {
     );
   }
 
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullscreen]);
+
   return (
-    <div className="overflow-hidden rounded-2xl border bg-slate-50 dark:bg-slate-950/60">
-      <div className="bg-background/95 flex items-center justify-between border-b px-3 py-2">
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-slate-50 dark:bg-slate-950/60",
+        isFullscreen &&
+          "bg-background fixed inset-0 z-[100] flex h-dvh w-screen flex-col rounded-none border-0 dark:bg-slate-950",
+      )}
+    >
+      <div className="bg-background/95 flex shrink-0 items-center justify-between border-b px-3 py-2">
         <div>
           <p className="text-sm font-semibold">Obsidian Canvas</p>
           <p className="text-muted-foreground text-xs">
@@ -190,10 +221,29 @@ export function KnowledgeCanvas({ canvas }: { canvas: ObsidianCanvas }) {
           <Button type="button" variant="outline" size="sm" onClick={() => setZoom(0.55)}>
             <Scan className="size-4" /> Fit
           </Button>
+          <Button
+            type="button"
+            variant={isFullscreen ? "default" : "outline"}
+            size="sm"
+            aria-pressed={isFullscreen}
+            onClick={() => setIsFullscreen((current) => !current)}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="size-4" />
+            ) : (
+              <Maximize2 className="size-4" />
+            )}
+            {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          </Button>
         </div>
       </div>
 
-      <div className="h-[720px] overflow-auto bg-[radial-gradient(circle,_rgba(100,116,139,0.22)_1px,_transparent_1px)] bg-size-[20px_20px]">
+      <div
+        className={cn(
+          "h-[720px] overflow-auto bg-[radial-gradient(circle,_rgba(100,116,139,0.22)_1px,_transparent_1px)] bg-size-[20px_20px]",
+          isFullscreen && "h-auto flex-1",
+        )}
+      >
         <div
           className="relative"
           style={{ width: layout.width * zoom, height: layout.height * zoom }}

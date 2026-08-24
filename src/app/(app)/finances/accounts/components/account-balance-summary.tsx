@@ -35,8 +35,9 @@ export function AccountBalanceSummary({
           <div className="space-y-1.5">
             <CardTitle>Total active balances</CardTitle>
             <CardDescription>
-              Net balance across {activeAccountCount} active {activeAccountCount === 1 ? "account" : "accounts"}.
-              Credit cards reduce the total; currencies stay separate.
+              Balance across {activeAccountCount} visible active{" "}
+              {activeAccountCount === 1 ? "account" : "accounts"}. Credit cards
+              are hidden by default; currencies stay separate.
             </CardDescription>
           </div>
           <Landmark className="text-muted-foreground size-5" />

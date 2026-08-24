@@ -11,6 +11,16 @@ export type AccountCurrencyBalance = {
   isPrimary: boolean;
 };
 
+export function getDefaultBalanceHiddenAccountIds(
+  accounts: AccountWithBalance[],
+): Set<string> {
+  return new Set(
+    accounts
+      .filter((account) => account.type === "CREDIT_CARD")
+      .map((account) => account.id),
+  );
+}
+
 export function getAccountCurrencyBalances(
   account: AccountWithBalance,
 ): AccountCurrencyBalance[] {

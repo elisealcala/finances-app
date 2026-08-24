@@ -11,8 +11,10 @@ import {
   FINANCE_CYCLE_OPENING_ACCOUNT_TYPES,
   type FinanceCycleForecastInput,
   type FinanceCurrency,
+  type FinanceStatementPaymentInput,
 } from "@/lib/finance-cycle";
 import { computeAccountBalancesByCurrency } from "@/lib/balance";
+import { calculateStatementBalances } from "@/lib/statement-balances";
 import { router, publicProcedure } from "@/server/trpc/init";
 import {
   closeFinanceCycleSchema,
@@ -68,7 +70,10 @@ function serializeCycle(cycle: CycleWithRelations) {
   };
 }
 
-function toForecastInput(cycle: CycleWithRelations): FinanceCycleForecastInput {
+function toForecastInput(
+  cycle: CycleWithRelations,
+  statementPayments: FinanceStatementPaymentInput[] = [],
+): FinanceCycleForecastInput {
   return {
     kind: cycle.kind,
     startDate: cycle.startDate,
@@ -94,7 +99,60 @@ function toForecastInput(cycle: CycleWithRelations): FinanceCycleForecastInput {
     penPerUsd: Number(cycle.penPerUsd),
     usdPerEur: Number(cycle.usdPerEur),
     goals: cycle.goals.map(serializeGoal),
+    statementPayments,
   };
+}
+
+async function statementPaymentsForPeriod(
+  db: Parameters<typeof computeAccountBalancesByCurrency>[0],
+  startDate: Date,
+  endDate: Date,
+): Promise<FinanceStatementPaymentInput[]> {
+  const statements = await db.creditCardStatement.findMany({
+    where: {
+      status: { not: "PAID" },
+      paymentDueDate: { gte: startDate, lte: endDate },
+    },
+    select: {
+      id: true,
+      month: true,
+      year: true,
+      paymentDueDate: true,
+      account: { select: { name: true, currency: true } },
+      expenses: {
+        where: { paymentStatus: "NOT_PAID" },
+        select: { amount: true, currency: true, paymentStatus: true },
+      },
+    },
+  });
+
+  return statements.flatMap((statement) => {
+    const { outstandingByCurrency } = calculateStatementBalances(
+      statement.expenses,
+      statement.account.currency,
+    );
+    const amounts = Object.entries(outstandingByCurrency).flatMap(
+      ([currency, amount]) =>
+        amount > 0 && ["PEN", "USD", "EUR"].includes(currency)
+          ? [{ amount, currency: currency as FinanceCurrency }]
+          : [],
+    );
+    if (amounts.length === 0) return [];
+
+    const period = new Intl.DateTimeFormat("en", {
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(statement.year, statement.month - 1, 1)));
+    return [
+      {
+        id: statement.id,
+        label: `${statement.account.name} · ${period}`,
+        dueDate: statement.paymentDueDate,
+        amounts,
+      },
+    ];
+  });
 }
 
 function goalCreateData(goals: CreateFinanceCycleInput["goals"]) {
@@ -132,8 +190,13 @@ async function resolvePreviousCycle(
   }
 
   const serializedPrevious = previous as CycleWithRelations;
+  const statementPayments = await statementPaymentsForPeriod(
+    db,
+    previous.startDate,
+    previous.endDate,
+  );
   const previousForecast = calculateFinanceForecast(
-    toForecastInput(serializedPrevious),
+    toForecastInput(serializedPrevious, statementPayments),
   );
   const openingAmount =
     previous.closingAmount == null
@@ -217,11 +280,12 @@ export const cycleRouter = router({
         where: {
           date: { gte: startDate, lte: endDate },
           debtInstallmentId: null,
+          account: { type: { not: "CREDIT_CARD" } },
         },
         select: { amount: true, currency: true, account: { select: { currency: true } } },
       }),
       ctx.db.debt.findMany({
-        where: { status: "ACTIVE" },
+        where: { status: "ACTIVE", type: { not: "CREDIT_CARD" } },
         select: {
           minimumPayment: true,
           account: { select: { currency: true } },
@@ -411,7 +475,14 @@ export const cycleRouter = router({
           message: "Finance cycle not found",
         });
       }
-      const forecast = calculateFinanceForecast(toForecastInput(cycle));
+      const statementPayments = await statementPaymentsForPeriod(
+        ctx.db,
+        cycle.startDate,
+        cycle.endDate,
+      );
+      const forecast = calculateFinanceForecast(
+        toForecastInput(cycle, statementPayments),
+      );
       const updated = await ctx.db.financeCycle.update({
         where: { id: input.id },
         data: {

@@ -380,11 +380,17 @@ describe("calculateFinanceForecast", () => {
               id: "mixed-currency-statement",
               label: "Mixed currency card",
               amount: 50,
+              sourceAmounts: [
+                { amount: 40, currency: "PEN" },
+                { amount: 8, currency: "EUR" },
+                { amount: 30, currency: "USD" },
+              ],
             },
             {
               id: "same-day-statement",
               label: "Second card",
               amount: 20,
+              sourceAmounts: [{ amount: 20, currency: "USD" }],
             },
           ],
         },
@@ -403,6 +409,7 @@ describe("calculateFinanceForecast", () => {
               id: "later-statement",
               label: "Later card",
               amount: 100,
+              sourceAmounts: [{ amount: 100, currency: "USD" }],
             },
           ],
         },
@@ -493,7 +500,12 @@ describe("calculateFinanceForecast", () => {
           statementPayments: 10,
           statementPaymentAmount: 10,
           statementPaymentEvents: [
-            { id: "start-boundary", label: "Start boundary", amount: 10 },
+            {
+              id: "start-boundary",
+              label: "Start boundary",
+              amount: 10,
+              sourceAmounts: [{ amount: 10, currency: "USD" }],
+            },
           ],
         },
         {
@@ -502,7 +514,12 @@ describe("calculateFinanceForecast", () => {
           statementPayments: 30,
           statementPaymentAmount: 20,
           statementPaymentEvents: [
-            { id: "end-boundary", label: "End boundary", amount: 20 },
+            {
+              id: "end-boundary",
+              label: "End boundary",
+              amount: 20,
+              sourceAmounts: [{ amount: 20, currency: "USD" }],
+            },
           ],
         },
       ],

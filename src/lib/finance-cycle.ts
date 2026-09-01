@@ -48,14 +48,16 @@ export type FinanceCycleGoalInput = {
   position?: number;
 };
 
+export type FinanceStatementPaymentAmount = {
+  amount: number;
+  currency: FinanceCurrency;
+};
+
 export type FinanceStatementPaymentInput = {
   id: string;
   label: string;
   dueDate: Date;
-  amounts: Array<{
-    amount: number;
-    currency: FinanceCurrency;
-  }>;
+  amounts: FinanceStatementPaymentAmount[];
 };
 
 export type FinanceCycleForecastInput = {
@@ -90,6 +92,7 @@ export type FinanceStatementPaymentEvent = {
   id: string;
   label: string;
   amount: number;
+  sourceAmounts: FinanceStatementPaymentAmount[];
 };
 
 export type FinanceProjectionPoint = {
@@ -276,7 +279,10 @@ function scheduledCashFlows(input: FinanceCycleForecastInput) {
     const dueDate = startOfDay(statement.dueDate);
     if (isBefore(dueDate, startDate) || isAfter(dueDate, endDate)) continue;
 
-    const amount = statement.amounts.reduce(
+    const sourceAmounts = statement.amounts
+      .filter((item) => item.amount > 0)
+      .map((item) => ({ ...item }));
+    const amount = sourceAmounts.reduce(
       (sum, item) =>
         sum +
         convertFinanceCurrency(
@@ -301,6 +307,7 @@ function scheduledCashFlows(input: FinanceCycleForecastInput) {
       id: statement.id,
       label: statement.label,
       amount,
+      sourceAmounts,
     });
     flows.set(key, flow);
   }

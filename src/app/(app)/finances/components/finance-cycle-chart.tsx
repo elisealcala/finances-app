@@ -132,7 +132,7 @@ export function FinanceCycleChart({
         const point = points[params[0]?.dataIndex ?? 0];
         if (!point) return null;
         return (
-          <div className="bg-popover text-popover-foreground w-72 rounded-lg border p-3 text-sm shadow-lg">
+          <div className="bg-popover text-popover-foreground w-[32rem] max-w-[calc(100vw-2rem)] rounded-lg border p-3 text-sm shadow-lg">
             <div className="font-semibold">
               {format(point.date, "MMM d, yyyy")}
             </div>
@@ -180,19 +180,43 @@ export function FinanceCycleChart({
               {point.statementPaymentEvents.length > 0 ? (
                 <div className="bg-destructive/5 my-2 space-y-1 rounded-md p-2">
                   <div className="text-destructive text-xs font-medium uppercase tracking-wide">
-                    Due on this date
+                    Due on this date · original currencies
                   </div>
-                  {point.statementPaymentEvents.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between gap-3 text-xs"
-                    >
-                      <span className="max-w-44 truncate">{payment.label}</span>
-                      <span className="text-destructive font-medium tabular-nums">
-                        {formatCurrency(expenseValue(payment.amount), currency)}
-                      </span>
-                    </div>
-                  ))}
+                  {point.statementPaymentEvents.map((payment) => {
+                    const showConvertedTotal =
+                      payment.sourceAmounts.length > 1 ||
+                      payment.sourceAmounts[0]?.currency !== currency;
+
+                    return (
+                      <div
+                        key={payment.id}
+                        className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-5 gap-y-1 py-1 text-xs"
+                      >
+                        <span className="min-w-0 break-words font-medium">
+                          {payment.label}
+                        </span>
+                        <div className="text-destructive text-right font-medium tabular-nums">
+                          {payment.sourceAmounts.map((sourceAmount) => (
+                            <div key={sourceAmount.currency}>
+                              {formatCurrency(
+                                expenseValue(sourceAmount.amount),
+                                sourceAmount.currency,
+                              )}
+                            </div>
+                          ))}
+                          {showConvertedTotal ? (
+                            <div className="border-destructive/20 mt-1 border-t pt-1">
+                              Converted{" "}
+                              {formatCurrency(
+                                expenseValue(payment.amount),
+                                currency,
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
               <div className="flex items-center justify-between gap-4 font-medium">

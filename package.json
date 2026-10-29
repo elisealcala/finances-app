@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "knowledge:sync": "tsx --env-file=.env scripts/sync-knowledge.ts",
-    "test": "tsx --test src/server/trpc/services/performance/progress.test.ts src/server/trpc/schemas/performance-generation.test.ts src/server/trpc/schemas/career.schema.test.ts src/server/knowledge/canvas.test.ts src/server/knowledge/vault.test.ts src/lib/finance-cycle.test.ts src/lib/account-balance-totals.test.ts src/lib/statement-balances.test.ts src/lib/obsidian-links.test.ts",
+    "test": "tsx --test src/server/trpc/services/performance/progress.test.ts src/server/trpc/services/debt/amortization.test.ts src/server/trpc/schemas/performance-generation.test.ts src/server/trpc/schemas/career.schema.test.ts src/server/knowledge/canvas.test.ts src/server/knowledge/vault.test.ts src/lib/finance-cycle.test.ts src/lib/account-balance-totals.test.ts src/lib/statement-balances.test.ts src/lib/obsidian-links.test.ts",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

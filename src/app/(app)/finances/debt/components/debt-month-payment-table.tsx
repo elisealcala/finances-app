@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -21,7 +21,10 @@ import {
 } from "@/components/ui/table";
 import { useChartColors } from "@/components/ui/echart";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { TimelineRow } from "@/server/trpc/services/debt/amortization";
+import {
+  getDebtPayoffDate,
+  type TimelineRow,
+} from "@/server/trpc/services/debt/amortization";
 import type { Debt } from "@/types/debt";
 
 const CHART_TOKEN_REFS = [
@@ -135,10 +138,21 @@ export function DebtMonthPaymentTable({
   const activeLabel =
     (activeRow?.monthLabel as string | undefined) ?? focusedMonthLabel ?? nowLabel;
 
+  // Paid-off debts only belong to months up to and including their payoff month.
+  const activeRowDate = activeRow?.date as string | undefined;
+  const monthDebts = useMemo(() => {
+    if (!activeRowDate) return debts;
+    const monthStart = startOfMonth(new Date(activeRowDate));
+    return debts.filter((debt) => {
+      const payoffDate = getDebtPayoffDate(debt);
+      return !payoffDate || monthStart <= startOfMonth(payoffDate);
+    });
+  }, [debts, activeRowDate]);
+
   const paymentRows = useMemo<MonthPaymentRow[]>(() => {
     const row = activeRow as Record<string, unknown> | undefined;
 
-    return debts.map((debt) => {
+    return monthDebts.map((debt) => {
       const balance = row ? Number(row[debt.id]) || 0 : 0;
       const color = colorByDebt.get(debt.id) ?? fallbackColors[0];
 
@@ -171,6 +185,20 @@ export function DebtMonthPaymentTable({
         return { debt, balance, color, due, paid, left, status };
       }
 
+      const payoffDate = getDebtPayoffDate(debt);
+      if (payoffDate && format(payoffDate, "MMM yyyy") === activeLabel) {
+        const paid = roundCurrency(
+          debt.payments
+            .filter(
+              (payment) =>
+                format(new Date(payment.date), "MMM yyyy") === activeLabel,
+            )
+            .reduce((sum, payment) => sum + payment.amount, 0),
+        );
+        const status: MonthPaymentStatus = "paid";
+        return { debt, balance, color, due: paid, paid, left: 0, status };
+      }
+
       const monthly = row ? Number(row[`${debt.id}_monthly`]) || 0 : 0;
       const due = balance > 0 ? monthly : 0;
       const left = due;
@@ -186,7 +214,7 @@ export function DebtMonthPaymentTable({
         status,
       };
     });
-  }, [activeRow, activeLabel, debts, colorByDebt, fallbackColors]);
+  }, [activeRow, activeLabel, monthDebts, colorByDebt, fallbackColors]);
 
   const totals = paymentRows.reduce(
     (acc, row) => ({
@@ -198,7 +226,7 @@ export function DebtMonthPaymentTable({
     { balance: 0, due: 0, paid: 0, left: 0 },
   );
 
-  if (debts.length === 0 || !activeRow) {
+  if (monthDebts.length === 0 || !activeRow) {
     return (
       <Card>
         <CardHeader>

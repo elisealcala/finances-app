@@ -70,17 +70,17 @@ export function FinancesPageClient() {
     [eurCategoryData, penCategoryData, usdCategoryData],
   );
 
-  const activeDebts = useMemo(
+  // Paid-off debts stay in so past months still show them; the table hides
+  // each one after its payoff month.
+  const trackedDebts = useMemo(
     () =>
-      (debtData?.debts ?? []).filter(
-        (debt) => debt.type !== "CREDIT_CARD" && debt.status === "ACTIVE",
-      ),
+      (debtData?.debts ?? []).filter((debt) => debt.type !== "CREDIT_CARD"),
     [debtData],
   );
 
   const { rows: debtTimelineRows } = useMemo(
-    () => generateTimeline(activeDebts),
-    [activeDebts],
+    () => generateTimeline(trackedDebts),
+    [trackedDebts],
   );
 
   const debtMonthLabel = useMemo(() => {
@@ -139,7 +139,7 @@ export function FinancesPageClient() {
       />
 
       <DebtMonthPaymentTable
-        debts={activeDebts}
+        debts={trackedDebts}
         rows={debtTimelineRows}
         focusedMonthLabel={debtMonthLabel}
       />

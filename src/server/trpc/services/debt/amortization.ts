@@ -143,6 +143,25 @@ export function computeCurrentBalance(
   return Math.max(Math.round(balance * 100) / 100, 0);
 }
 
+/** Best-known date a paid-off debt was settled: the latest capital payment date
+ *  or paid installment due date. Installments use their due date (not paidAt)
+ *  so the payoff month lines up with how installments are bucketed per month.
+ *  Falls back to updatedAt when there is no payment history.
+ *  Returns null for debts that are still active. */
+export function getDebtPayoffDate(debt: Debt): Date | null {
+  if (debt.status !== "PAID_OFF") return null;
+
+  const timestamps = [
+    ...(debt.payments ?? []).map((p) => new Date(p.date).getTime()),
+    ...(debt.installments ?? [])
+      .filter((i) => i.status === "PAID")
+      .map((i) => new Date(i.dueDate).getTime()),
+  ];
+
+  if (timestamps.length === 0) return new Date(debt.updatedAt);
+  return new Date(Math.max(...timestamps));
+}
+
 export type TimelineRow = {
   monthLabel: string;
   date: string; // ISO date string for period filtering
